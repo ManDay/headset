@@ -35,7 +35,7 @@ beta = 5 // Unlock incline
 
 // Heights, Turntable mount
 const
-hi0 = 3, // Base plate
+hi0 = 4, // Base plate
 hi1 = 6, // Retainer
 hi2 = 2, // Guide cutout
 hi3 = 6 // Guide height
@@ -165,7 +165,7 @@ function cap_cutout( ) {
 function cap_total( ) {
  return cylinder( ho4-ho0,r5 ).translate( [ 0,0,ho0 ] )
   .add(
-   cylinder( ho0-hi0-edge_margin+eps,r4 ).translate( [ 0,0,hi0+edge_margin ] )
+   cylinder( ho0-hi0+eps,r4 ).translate( [ 0,0,hi0 ] )
   )
   .subtract( cylinder( ho2,r3 ) )
   .subtract( cap_retainer( ) )
@@ -230,9 +230,9 @@ function retainer( ) {
  const theta_min = Math.min( theta,45/2 )
 
  const base = new CrossSection( [ 
-  [r2,0],[r3+(hi0-edge_margin)/tan(printing_angle),0],
-  [r3+(hi0-edge_margin)/tan(printing_angle),edge_margin],
-  [r3,hi0],
+  [r2,0],[r3+(hi0-2*edge_margin)/tan(printing_angle),0],
+  [r3+(hi0-2*edge_margin)/tan(printing_angle),edge_margin],
+  [r3,hi0-edge_margin],
   [r3,border],[r2,border],
   [i2,hi1+edge_margin],
   [i2,hi1],[r2,hi1],
@@ -240,34 +240,40 @@ function retainer( ) {
   .revolve( )
   .intersect( sector( 90-2*theta_min,r5+eps ).rotate( theta_min ).extrude( ho1*2 ) )
   
- const mask = sector( 45/2,r5+eps ).extrude( hi1 )
+ const mask = sector( 45/2,r5+eps ).extrude( hi1+eps ).translate( [ 0,0,-eps ] )
   .add( sector( 45/2,r2 ).extrude( ho4 ) )
- 
+  
  return base
   .subtract( mask ).subtract( mask.mirror( [ -1,1,0 ] ) )
 }
 
 function base_disk( ) {
- const outer = r3+(hi0-edge_margin)/tan(printing_angle)
+ const outer = r3+(hi0-2*edge_margin)/tan(printing_angle)
  
- const cs = new CrossSection( [
-  [ -eps,0 ],[ outer,0 ],
+ const retainer = new CrossSection( [
+  [ r3-eps,-eps ],[ outer,-eps ],
   [ outer,edge_margin ],
-  [ r3,hi0 ],
-  [ r3,hi1 ],[ r2,hi1 ],[ -eps,hi1 ]
+  [ r3,hi0-edge_margin ],[ r3-eps,hi0-edge_margin ]
  ] ).revolve( )
+ .intersect(
+  sector( 135,outer+eps )
+   .rotate( -45/2 )
+   .extrude( hi0+2*eps )
+   .translate( [ 0,0,-eps ] )
+ )
+  
+ const retainer_neg = sector( 45,outer+eps ).rotate( 45/2 ).subtract( circle( eps ) ).extrude( hi3*2 ).translate( [0,0,-eps] )
  
- const mask_base = sector( 45,outer+eps ).rotate( 45/2 ).subtract( circle( eps ) ).extrude( hi3*2 ).translate( [0,0,-eps] )
- 
- const mask = mask_base
-  .add( mask_base.mirror( [1,0,0] ) )
-  .add( mask_base.mirror( [0,1,0] ) )
-  .add( mask_base.mirror( [1,1,0] ) )
+ const neg = retainer_neg
+  .add( retainer_neg.mirror( [1,1,0] ) )
   .add( cylinder( hi1-hi0+eps,r2 ).translate( [ 0,0,hi0-eps ] ) )
   .subtract( cylinder( hi0+eps,r2 ).translate( [ 0,0,-eps ] ) )
-  
- return cs
-  .subtract( mask )
+ 
+ return cylinder( hi1+eps,r3 ).translate( [ 0,0,-eps ] )
+  .add( retainer )
+  .add( retainer.rotate( [ 0,0,180 ] ) )
+  .trimByPlane( [ 0,0,1 ],0 )
+  .subtract( neg )
   .subtract( slider_base( ) )
   .add( cylinder( hi2+hs+eps,rs ).translate( [ 0,0,hi2-eps ] ) )
 }
@@ -312,7 +318,7 @@ function button( ) {
   [r3-protrusion,hi1+edge_margin],[r3+eps,hi1-eps]
  ] ).revolve( )
   .intersect( sector( 2*theta_min,r5 ).rotate( -theta_min-90 ).extrude( ho4 ) )
- const bottom = cylinder( ho3,r4 ).subtract( cylinder( ho3+eps,r3 ) ).trimByPlane( [ 0,0,1 ],hi0+edge_margin )
+ const bottom = cylinder( ho3,r4 ).subtract( cylinder( ho3+eps,r3 ) ).trimByPlane( [ 0,0,1 ],hi0 )
   .add( ret )
   .intersect( cube( [ 2*button_actor_width( ),r5,ho4 ] ).translate( [ -button_actor_width( ),-r5,0 ] ) )
   
@@ -362,7 +368,6 @@ function rotated_button( angle ) {
 export default [
  spring( )
  ,rotated_button( 0 )
- ,base_disk( )
  ,slider( )
  ,turntable( )
  ,turntable( ).mirror( [ 1,0,0 ] )
@@ -372,4 +377,5 @@ export default [
  ,cap_top( ).mirror( [ 1,0,0 ] )
  ,retainer()
  ,retainer().rotate( [ 0,0,180 ] )
+ ,base_disk( )
 ].map( (o) => c(o) )
