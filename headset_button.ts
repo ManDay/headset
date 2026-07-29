@@ -37,7 +37,7 @@ beta = 5 // Unlock incline
 const
 hi0 = 4, // Base plate
 hi1 = 6, // Retainer
-hi2 = 2, // Guide cutout
+hi2 = 4, // Guide cutout floor
 hi3 = 6 // Guide height
 
 // Heights, Turntable structure
@@ -275,7 +275,7 @@ function base_disk( ) {
   .trimByPlane( [ 0,0,1 ],0 )
   .subtract( neg )
   .subtract( slider_base( ) )
-  .add( cylinder( hi2+hs+eps,rs ).translate( [ 0,0,hi2-eps ] ) )
+  .add( cylinder( hs+eps,rs ).translate( [ 0,0,hi2-eps ] ) )
 }
 
 function button_actor_width( ) {
@@ -325,6 +325,8 @@ function button( ) {
  const hinge = sector( 180,i5 ).extrude( 2*(i1+i6) ).rotate( [0,90,0] )
   .translate( [ -i1-i6,-r4,ho3 ] ) 
   
+ const springguide = cylinder( hs+eps,rs ).translate( [ 0,0,ho3-hb-hs ] ) 
+  
  return bottom
   .add( top )
   .add( shield )
@@ -332,13 +334,14 @@ function button( ) {
   .trimByPlane( [ 1,0,0],-i1 )
   .add( hinge )
   .trimByPlane( [ 0,0,-1],-ho3 )
+  .add( springguide )
 }
 
 function spring( ) {
  const incline = 4
  const thickness = 0.2
  const radius = rs+2*thickness
- const height = ho2-hi0-2*thickness
+ const height = ho3-hb-hi0-2*thickness
  
  const length = height/sin(incline)
  const rotations = length/(2*PI*radius)
@@ -370,12 +373,12 @@ export default [
  ,rotated_button( 0 )
  ,slider( )
  ,turntable( )
- ,turntable( ).mirror( [ 1,0,0 ] )
  ,cap_bottom( )
  ,cap_top( )
+ ,retainer()
+ ,base_disk( )
+ /*,turntable( ).mirror( [ 1,0,0 ] )
  ,cap_bottom( ).mirror( [ 1,0,0 ] )
  ,cap_top( ).mirror( [ 1,0,0 ] )
- ,retainer()
- ,retainer().rotate( [ 0,0,180 ] )
- ,base_disk( )
+ ,retainer().rotate( [ 0,0,180 ] ) //*/
 ].map( (o) => c(o) )
