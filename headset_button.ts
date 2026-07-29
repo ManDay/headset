@@ -44,7 +44,7 @@ hi3 = 6 // Guide height
 const
 ho0 = 8, // Retention edge and button end
 ho1 = 9, // Button notch
-ho2 = 16, // Button bottom
+ho2 = 16, // Cap bottom
 ho3 = 20, // Swivel (Lever Axis Y)
 ho4 = 21 // Button top
 
@@ -52,6 +52,9 @@ ho4 = 21 // Button top
 const
 rs = 2,
 hs = 3
+
+// Button thickness
+const hb = 3
 
 import {Manifold, CrossSection, getCircularSegments,only,setMaterial} from 'manifold-3d/manifoldCAD';
 const {cylinder, cube, sphere} = Manifold;
@@ -110,10 +113,10 @@ function turntable( ) {
  
  const c_h = ho2-edge_margin
  
- const button_space = cube( [i1+eps,2*r5,2*ho4] )
+ const button_space = cube( [i1+eps,2*r5,2*(ho4+eps)] )
   .translate( [-eps,0,-2*ho4+eps ])
-  .trimByPlane( [0,sin(alpha),cos(alpha)],-(ho4-ho2) )
-  .translate( [0,-(r3+r4)/2,ho4])
+  .trimByPlane( [0,sin(alpha),cos(alpha)],-hb)
+  .translate( [0,-(r3+r4)/2,ho3])
 
  return tt.add( cap_retainer( ).trimByPlane( [ 0,0,-1 ],-ho4 ) ).add( ret_b )
   .subtract( button_space ).subtract(
@@ -274,42 +277,41 @@ function button_actor_width( ) {
 }
 
 function button( ) {
+ const rounding = circle( r5 ).translate( [ -r4,0 ] ).revolve( ).rotate( [ 0,90,0 ] )
+  .translate( [ 0,-r4,ho3 ] )
+  .add( cylinder( 2*(i1+eps),edge_margin ).rotate( [ 0,90,0 ] )
+   .translate( [ -i1-eps,-r4,ho3-i5 ] ) )
+  .add(
+   cylinder( 2*(i1+eps),i5+edge_margin ).rotate( [ 0,90,0 ] )
+    .trimByPlane( [ 0,1,0 ],0 )
+    .translate( [ -i1-eps,-r4,ho3 ] )
+  )
+  .hull( )
+   
+ const top = rounding.add (
+  cube( [ 2*(i1+eps),r7+r4,hb+eps ] ).translate( [ -i1-eps,-r4,ho3-hb ] )
+ )
+  
+ const passing = ho3-hb/cos(alpha)-tan(alpha)*(r5+r4)
+ const correction = eps*(r4-r5-edge_margin)/(ho3-hb-passing)
+ 
+ const shield = cube( [ 2*(i1+eps),2*r5,2*ho4 ],true ).translate( [ 0,r5,0 ] ).intersect(
+  cylinder( ho3-hb-passing+eps,r5 ).translate( [ 0,0,passing] )
+  .subtract( cylinder( ho3-hb-passing+2*eps,r5-edge_margin+correction,r4-correction ).translate( [ 0,0,passing-eps ] ) )
+ )
+ 
  const w = r4-r3
  const h = ho3-hi1-edge_margin*2
  const protrusion = (w+h*sin(beta))/cos(beta)-w
- 
  const height = tan(printing_angle)*(protrusion+eps)
- 
- const rounding = circle( r5 ).translate( [ -r4,0 ] ).revolve( ).rotate( [ 0,90,0 ] )
-  .translate( [ 0,-r4,ho3 ] )
- 
  const theta = asin( button_actor_width( )/r3 )
  const theta_min = Math.min( theta,45/2 )
- 
- const top = cylinder( 2*(i1+eps),edge_margin ).rotate( [ 0,90,0 ] ).translate( [ -i1-eps,-r4,ho3-i5 ] )
-  .add( rounding )
-  .add(
-   cube( [ 2*(i1+eps),r7+r4,ho4-ho2+2*eps ] ).translate( [ -i1-eps,-r4,ho2-eps ] )
-    .intersect(
-     cylinder( ho4+eps,r3+eps ).add( cube( 2*r5 ).translate( [ -r5,0,0 ] ) )
-    )
-  )
-  .hull( )
- 
- const passing = ho3-(ho3-ho2)/cos(alpha)-tan(alpha)*(r5+r4)
-  
- const shield = cube( [ 2*(i1+eps),2*r5,2*ho4 ],true ).translate( [ 0,r5,0 ] ).intersect(
-  cylinder( ho2-passing+eps,r5 ).translate( [ 0,0,passing] )
-  .subtract( cylinder( ho2,r4 ).translate( [ 0,0,passing-eps ] ) )
- )
- 
  const ret = new CrossSection( [
   [r3+eps,hi1+2*edge_margin+height],
   [r3-protrusion,hi1+2*edge_margin],
   [r3-protrusion,hi1+edge_margin],[r3+eps,hi1-eps]
  ] ).revolve( )
   .intersect( sector( 2*theta_min,r5 ).rotate( -theta_min-90 ).extrude( ho4 ) )
-  
  const bottom = cylinder( ho3,r4 ).subtract( cylinder( ho3+eps,r3 ) ).trimByPlane( [ 0,0,1 ],hi0+edge_margin )
   .add( ret )
   .intersect( cube( [ 2*button_actor_width( ),r5,ho4 ] ).translate( [ -button_actor_width( ),-r5,0 ] ) )
@@ -350,17 +352,24 @@ function spring( ) {
  return circle( thickness ).extrude( length,segments ).warp( springwarp ).translate( [ 0,0,hi0 ] )
 }
 
+function rotated_button( angle ) {
+ return button( )
+  .translate( [ 0,r4,-ho3 ] )
+  .rotate( [ -angle,0,0 ] )
+  .translate( [ 0,-r4,ho3 ] )
+}
+
 export default [
- spring( ),
- button( ),
- base_disk( ),
- slider( ),
- turntable( ),
- turntable( ).mirror( [ 1,0,0 ] ),
- cap_bottom( ),
- cap_top( ),
- cap_bottom( ).mirror( [ 1,0,0 ] ),
- cap_top( ).mirror( [ 1,0,0 ] ),
- retainer(),
- retainer().rotate( [ 0,0,180 ] )
+ spring( )
+ ,rotated_button( 0 )
+ ,base_disk( )
+ ,slider( )
+ ,turntable( )
+ ,turntable( ).mirror( [ 1,0,0 ] )
+ ,cap_bottom( )
+ ,cap_top( )
+ ,cap_bottom( ).mirror( [ 1,0,0 ] )
+ ,cap_top( ).mirror( [ 1,0,0 ] )
+ ,retainer()
+ ,retainer().rotate( [ 0,0,180 ] )
 ].map( (o) => c(o) )
