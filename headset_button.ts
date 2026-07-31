@@ -275,7 +275,7 @@ function base_disk( ) {
   .trimByPlane( [ 0,0,1 ],0 )
   .subtract( neg )
   .subtract( slider_base( ) )
-  .add( cylinder( hs+eps,rs ).translate( [ 0,0,hi2-eps ] ) )
+  .add( cylinder( hs+( hi2-(hi0-i0) )+eps,rs ).translate( [ 0,0,hi0-i0-eps ] ) )
 }
 
 function button_actor_width( ) {
