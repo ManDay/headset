@@ -13,7 +13,7 @@ r3 = 18, // Lever space, inside; Turntable retainer, outside
 r4 = 21, // Push button end; Lever space, outside (Lever Axis X)
 r5 = 25, // Boundary wall, inside (>= r3 + 2*(r4-r3)
 r6 = 27, // Boundary wall, outside
-r7 = 70 // Button length
+r8 = 70 // Button length
 
 // Indents
 const
@@ -58,10 +58,14 @@ const hb = 3
 
 // Pushswitch parameters
 const
+r7 = r5, // Wall front
 hs0 = 6.5, // Meet against wall
 hs1 = 17.5, // Maximal height
 rs0 = 2, // Meet radius
-rs1 = 3.25 // Maximal radius
+rs1 = 3.25, // Maximal radius
+hs2 = hi0+rs1+0, // Altitude
+hs3 = 2, // Retainer wall
+phi = 8 // Incline
 
 // Cable parameters
 const
@@ -72,15 +76,17 @@ rc2 = 2.5 // Inlet cable radius
 // Chassis geometry
 const
 rf = 4, // Fillet radius
-rr = 10, // Main retainer radius
+rr2 = 10, // Main retainer cutout
+rr1 = 8 // Inner retainer cutout
+rr0 = 6 // Retainer radius
 
 hc = ho2-rc2-edge_margin // Cable holes altitude
 
 // Cable hole positions
 const
- inlet_dist = 1.5*rr,
- speakers_dist = 2.5*rr,
- mic_dist = 1.7*rr
+ inlet_dist = 1.5*rr2,
+ speakers_dist = 2.5*rr2,
+ mic_dist = 1.7*rr2
 
 import {Manifold, CrossSection, getCircularSegments,only,setMaterial} from 'manifold-3d/manifoldCAD';
 const {cylinder, cube, sphere} = Manifold;
@@ -127,6 +133,14 @@ function sector( a,radius ) {
     ) )
 }
 
+function button_space( ) {
+ return cube( [i1+eps,2*r5,2*(ho4+eps)] )
+  .translate( [-eps,0,-2*ho4+eps ])
+  .trimByPlane( [0,sin(alpha),cos(alpha)],-hb)
+  .translate( [0,-(r3+r4)/2,ho3])
+}
+
+
 function radial_separation( v ) {
  const x = v[ 0 ], y = v[ 1 ]
  const l = Math.sqrt( x*x + y*y )
@@ -144,14 +158,9 @@ function turntable( ) {
  const ret_b = sector( 135,r2 ).rotate( -135/2.0 ).extrude( hi1-hi0+eps ).translate( [0,0,hi0-eps ])
  
  const c_h = ho2-edge_margin
- 
- const button_space = cube( [i1+eps,2*r5,2*(ho4+eps)] )
-  .translate( [-eps,0,-2*ho4+eps ])
-  .trimByPlane( [0,sin(alpha),cos(alpha)],-hb)
-  .translate( [0,-(r3+r4)/2,ho3])
 
  return tt.add( cap_retainer( ).trimByPlane( [ 0,0,-1 ],-ho4 ) ).add( ret_b )
-  .subtract( button_space ).subtract(
+  .subtract( button_space( ) ).subtract(
    slider_base( )
     .translate( [ -i1,0,-c_h ] )
     .trimByPlane( [-sin(printing_angle),0,-cos(printing_angle)],0 )
@@ -194,13 +203,22 @@ function cap_cutout( ) {
 }
 
 function cap_total( ) {
+
  return cylinder( ho4-ho0,r5 ).translate( [ 0,0,ho0 ] )
   .add(
    cylinder( ho0-hi0+eps,r4 ).translate( [ 0,0,hi0 ] )
   )
   .subtract( cylinder( ho2,r3 ) )
   .subtract( cap_retainer( ) )
-  .trimByPlane( [ 1,0,0 ],i1 )
+  .trimByPlane( [ 1,0,0 ],button_actor_width( ) )
+  .subtract(
+   new CrossSection( [
+    [ -r5-eps,0 ],[ 0,0 ],
+    [ 0,ho0 ],[ r5+eps,ho0 ],
+    [ r5+eps,ho4+eps ],[-r5-eps,ho4+eps ] ] )
+    .extrude( i1*2 ).translate( [ 0,0,-i1 ] )
+    .rotate( [ 90,0,-90 ] )
+  )
 }
 
 function cap_top( ) {
@@ -326,7 +344,7 @@ function button( ) {
   .hull( )
    
  const top = rounding.add (
-  cube( [ 2*(i1+eps),r7+r4,hb+eps ] ).translate( [ -i1-eps,-r4,ho3-hb ] )
+  cube( [ 2*(i1+eps),r8+r4,hb+eps ] ).translate( [ -i1-eps,-r4,ho3-hb ] )
  )
   
  const passing = ho3-hb/cos(alpha)-tan(alpha)*(r5+r4)
@@ -409,11 +427,11 @@ function wall_strength( ) {
 
 function chassis( ) {
  const
-  separation = r6+rr+wall_strength()*2,
-  boundary = r5+hs1+wall_strength( )
+  separation = r6+rr2+wall_strength()*2,
+  boundary = r7+hs1+wall_strength( )
 
  const retainer_center = [ separation*cos(gamma),-separation*sin(gamma) ]
- const retainer_circle = circle( rr+wall_strength( ) ).translate( retainer_center )
+ const retainer_circle = circle( rr2+wall_strength( ) ).translate( retainer_center )
 
  return circle( r6 ).add( retainer_circle ).hull( )
   .add( 
@@ -426,7 +444,7 @@ function chassis( ) {
 }
 
 function retainer_separation( ) {
- return r6+rr+wall_strength()*2
+ return r6+rr2+wall_strength()*2
 }
 
 function retainer_center( ) {
@@ -434,18 +452,18 @@ function retainer_center( ) {
 }
 
 function left_edge_angle( ) {
- return -gamma + asin( (r6 - (rr+wall_strength( )))/retainer_separation( ) )
+ return -gamma + asin( (r6 - (rr2+wall_strength( )))/retainer_separation( ) )
 }
 
 function right_edge_angle( ) {
- const boundary = r5+hs1+wall_strength( )
+ const boundary = r7+hs1+wall_strength( )
  
  const
   delta_x = ( boundary-rf-retainer_center( )[ 0 ] ),
   delta_y = ( -i1-retainer_center( )[ 1 ] )
  const separation = Math.sqrt( delta_x**2 + delta_y**2 )
  
- return atan( delta_y/delta_x ) + asin( ( rr+wall_strength( ) - rf )/separation )
+ return atan( delta_y/delta_x ) + asin( ( rr2+wall_strength( ) - rf )/separation )
 }
 
 function chassis_total( ) {
@@ -459,21 +477,21 @@ function chassis_total( ) {
  const inlet = cylinder( wall_strength( )+2*eps,rc2 )
   .translate( [ 0,0,-eps ] ) 
   .rotate( [ 90,0,0 ] )
-  .translate( [ inlet_dist,-rr+eps,hc ] )
+  .translate( [ inlet_dist,-rr2+eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
   
  const speakers = cylinder( wall_strength( )+2*eps,rc1 )
   .translate( [ 0,0,-eps ] )
   .rotate( [ 90,0,0 ] )
-  .translate( [ speakers_dist,-rr+eps,hc ] )
+  .translate( [ speakers_dist,-rr2+eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
   
  const mic = cylinder( wall_strength( )+2*eps,rc0 )
   .translate( [ 0,0,-eps ] )
   .rotate( [ 90,0,0 ] )
-  .translate( [ -mic_dist,-rr+eps,hc ] )
+  .translate( [ -mic_dist,-rr2+eps,hc ] )
   .rotate( [ 0,0,left_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
 
@@ -504,6 +522,11 @@ function pushswitch( ) {
   .add( cylinder( 3+eps,2 ).translate( [ 0,0,3.5 ] ) )
   .add( cylinder( 8,3.25 ).translate( [ 0,0,6.5 ] ) )
   .add( cube( [ 2.54,2,3+eps ],true ).translate( [ 0,0,14.5+1.5-eps ] ) )
+  .translate( [ 0,0,-(3.5+3-hs3) ] )
+  .rotate( [ 0,90,0 ] )
+  .translate( [ 0,0,-sin(phi)*hs3-rs1 ] )
+  .rotate( [ 0,-phi,0 ] )
+  .translate( [ r7,0,cos(phi)*rs1+hs2+sin(phi)*hs3 ] )
 }
 
 function cable_slot( ) {
@@ -513,12 +536,12 @@ function cable_slot( ) {
 
 function cable_complement_mask( ) {
  return cube( [ ( speakers_dist-inlet_dist )+rc1+rc2+2*edge_margin,wall_strength( )+2*eps,ho4 ] )
-  .translate( [ inlet_dist-rc2-edge_margin,-rr-wall_strength()-eps,hc ] )
+  .translate( [ inlet_dist-rc2-edge_margin,-rr2-wall_strength()-eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [0] ) ) 
   .add(
    cube( [ 2*(rc0+edge_margin),wall_strength( )+2*eps,ho4 ] )
-    .translate( [ -mic_dist-rc0-edge_margin,-rr-wall_strength( )-eps,hc ] )
+    .translate( [ -mic_dist-rc0-edge_margin,-rr2-wall_strength( )-eps,hc ] )
     .rotate( [ 0,0,left_edge_angle( ) ] )
     .translate( retainer_center( ).concat( [0] ) )
   )
@@ -556,7 +579,7 @@ function cable_cavity( ) {
 
  return cavity = top_neg_cs.intersect( chassis( ) )
   .subtract( circle( r5 ) )
-  .subtract( circle( rr ).translate( retainer_center( ) ) )
+  .subtract( circle( rr2 ).translate( retainer_center( ) ) )
   .offset( -wall_strength( ) )
   .extrude( ho4+2*eps ).trimByPlane( [ 0,-1,0] )
   .translate( [ 0,0,-eps ] )
@@ -570,13 +593,12 @@ function cable_cavity( ) {
   )
 }
 
-
 function wall( ) {
   return chassis_total( )
    .subtract( top_cover_mask( ) )
    .subtract( cable_cavity( ) )
    .subtract( cable_complement_mask( ) )
-   .subtract( cylinder( ho4,rr ).translate( retainer_center( ).concat( [0] ) ) )
+   .subtract( cylinder( ho4,rr2 ).translate( retainer_center( ).concat( [0] ) ) )
 }
 
 function rotated_button( angle ) {
@@ -586,17 +608,119 @@ function rotated_button( angle ) {
   .translate( [ 0,-r4,ho3 ] )
 }
 
+function main_retainer_neg( ) {
+ const h = ho4/2+2*eps
+ const free = sector( 90,rr1+eps ).extrude( h )
+ return cylinder( h,(rr1+rr0-h/tan(printing_angle))/2,(rr1+rr0+h/tan(printing_angle))/2 )
+  .add( cylinder( h,rr0 ) )
+  .add( free ).add( free.rotate( [ 0,0,180 ] ) )
+  .intersect( cylinder( h,rr1 ) )
+  .translate( [0,0,-eps] )
+}
+
 function top_cover( ) {
+ const ret_y = sin(phi)*hs3+hs2+cos(phi)*rs1
+ const switchbutton_ret = new CrossSection( [
+  [ 0,ret_y ],[ edge_margin,ret_y ],
+  [ edge_margin+tan(printing_angle)*ho4,ret_y + ho4 ],[ 0,ret_y + ho4 ]
+ ] )
+  .extrude( button_actor_width( )*2 )
+  .rotate( [ 90,0,0 ] )
+  .translate( [ r7,button_actor_width( ),0 ] )
+  .trimByPlane( [ 0,0,-1 ],-ho4+eps )
+  
+  
  return chassis_total( ).intersect(
   top_cover_mask( )
   .add( cable_complement_mask( ).subtract( cable_cavity( ) ) )
  )
+  .add( switchbutton_ret )
+  .add(
+   cylinder( ho2-ho4/2+eps,rr2 )
+    .translate( retainer_center( ).concat( [ho4/2] ) )
+  )
+  .subtract( main_retainer_neg( ).translate( retainer_center( ).concat( [ ho4/2 ] ) ) )
+}
+
+function main_retainer( ) {
+ const h = ho4/2+2*eps
+ const slope = cylinder( h,(rr1+rr0-h/tan(printing_angle))/2,(rr1+rr0+h/tan(printing_angle))/2 ).translate( [ 0,0,-eps ] )
+ const free = sector( 90,rr1+eps ).extrude( ho4/2+eps ).translate( [ 0,0,0 ] )
+ return slope.add(
+  slope.intersect( free.add( free.rotate( [ 0,0,180 ] ) ) ).mirror( [ 0,0,1 ] )
+ )
+  .add( cylinder( ho4,rr0 ).translate( [ 0,0,-ho4/2 ] ) )
+  .add( free ).add( free.rotate( [ 0,0,180 ] ) )
+  .intersect( cylinder( ho4,rr1 ).translate( [ 0,0,-ho4/2 ] ) )
+  .translate( retainer_center( ).concat( [ ho4/2 ] ) )
+}
+
+function switchbutton_holder( ) {
+ const ret_y = sin(phi)*hs3+hs2+cos(phi)*rs1
+ const ext = new CrossSection( [
+  [ edge_margin,ret_y ],[ 0,ret_y ],
+  [ tan(phi)*(ret_y-hi0),hi0 ],[ hs1,hi0 ],
+  [ hs1,ret_y+ho4 ],[ edge_margin+tan(printing_angle)*ho4,ret_y+ho4 ]
+ ] ).extrude( 2*button_actor_width( ) )
+  .rotate( [ 90,0,0 ] )
+  .trimByPlane( [ 0,0,-1 ],-ho2 )
+  .translate( [ r7,button_actor_width( ),0 ] )
+
+ const neg = cube( [ hs1,rs1*2,ho4 ] )
+  .translate( [ 0,0,-ho4/2 ] )
+  .rotate( [ 0,-phi,0 ] )
+  .translate( [ r7+cos( phi )*hs3,-rs1,ret_y ] )
+  
+ return ext.subtract( neg )
+  .subtract(
+   cylinder( hs1,rs0 )
+    .rotate( [ 0,90,0 ] )
+    .translate( [ -eps,0,-sin(phi)*hs3-rs1 ] )
+    .rotate( [ 0,-phi,0 ] )
+    .translate( [ r7,0,ret_y ] )
+  )
+}
+
+function bottom_cover( ) {
+ const outer = r3+(hi0-2*edge_margin)/tan(printing_angle)
+ 
+ const retainer = new CrossSection( [
+  [ r3-eps,-eps ],[ outer,-eps ],
+  [ outer,edge_margin ],
+  [ r3,hi0-edge_margin ],[ r3-eps,hi0-edge_margin ]
+ ] ).revolve( )
+ .intersect(
+  sector( 135,outer+eps )
+   .rotate( -45/2 )
+   .extrude( hi0+2*eps )
+   .translate( [ 0,0,-eps ] )
+ )
+
+ const base_neg = 
+   cylinder( hi0+2*eps,r3 ).translate( [ 0,0,-eps ] )
+   .add( retainer ).add( retainer.rotate( [ 0,0,180 ] ) )
+ 
+ return chassis( ).extrude( hi0 )
+  .add(
+   cylinder( ho4/2-eps,rr2 )
+    .translate( retainer_center( ).concat( [eps] ) )
+  )
+  .subtract(
+   main_retainer_neg( )
+    .rotate( [ 0,0,90 ] )
+    .mirror( [ 0,0,1 ] )
+    .translate( retainer_center( ).concat( [ ho4/2 ] ) )
+  )
+  .subtract( base_neg )
 }
 
 const stators = [
- pushswitch( ).rotate( [ 0,80,0 ] ).translate( [ r4+1,0,hi0+2 ] )
+ pushswitch( )
  ,wall( )
- ,only(top_cover( ))
+ ,main_retainer( )
+ ,bottom_cover( )
+ ,top_cover( )
+ ,switchbutton_holder( )
  ,base_disk( )
  ,retainer()
  ,retainer().rotate( [ 0,0,180 ] )
@@ -614,7 +738,6 @@ const rotors = [
  ,cap_top( ).mirror( [ 1,0,0 ] )
 ]
 
-export default (
-rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators )
-)
+export default [cap_top( ),c(cap_bottom( ))]
+//export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ) )
 
