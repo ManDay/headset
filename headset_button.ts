@@ -77,9 +77,10 @@ rc2 = 2.5 // Inlet cable radius
 const
 rf = 4, // Fillet radius
 rr2 = 10, // Main retainer cutout
-rr1 = 8 // Inner retainer cutout
+rr1 = 8, // Inner retainer cutout
 rr0 = 6 // Retainer radius
 
+const
 hc = ho2-rc2-edge_margin // Cable holes altitude
 
 // Cable hole positions
@@ -430,8 +431,7 @@ function chassis( ) {
   separation = r6+rr2+wall_strength()*2,
   boundary = r7+hs1+wall_strength( )
 
- const retainer_center = [ separation*cos(gamma),-separation*sin(gamma) ]
- const retainer_circle = circle( rr2+wall_strength( ) ).translate( retainer_center )
+ const retainer_circle = circle( rr2+wall_strength( ) ).translate( retainer_center( ) )
 
  return circle( r6 ).add( retainer_circle ).hull( )
   .add( 
@@ -738,6 +738,5 @@ const rotors = [
  ,cap_top( ).mirror( [ 1,0,0 ] )
 ]
 
-export default [cap_top( ),c(cap_bottom( ))]
-//export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ) )
+export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ).map( (o) => c(o) ) )
 
