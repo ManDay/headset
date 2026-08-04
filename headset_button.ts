@@ -530,7 +530,7 @@ function pushswitch( ) {
 }
 
 function cable_slot( ) {
- return cube( [ 2*rc0+eps,2*button_actor_width( ),ho4 ] )
+ return cube( [ 2*rc0+eps,button_actor_width( ),ho4 ] )
   .translate( [ r5+hs1-2*rc0,-button_actor_width( )-wall_strength( )-eps,ho2-2*rc0 ] )
 }
 
@@ -679,6 +679,7 @@ function switchbutton_holder( ) {
     .rotate( [ 0,-phi,0 ] )
     .translate( [ r7,0,ret_y ] )
   )
+  .subtract( cable_slot( ) )
 }
 
 function bottom_cover( ) {
