@@ -192,7 +192,7 @@ function cap_retainer( ) {
 }
 
 function cap_cutout( ) {
- const cap_cutout_depth = r5*cos(printing_angle)
+ const cap_cutout_depth = r3*cos(printing_angle)
  const threshold = i4+4
  const upper_edge = threshold+((ho4-ho2)/2-edge_margin )/tan( printing_angle )
  const stabilizer_size = 4*edge_margin
