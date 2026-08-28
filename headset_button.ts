@@ -418,7 +418,7 @@ function button( ) {
  const hinge = sector( 180,i5_sg ).extrude( 2*(i1_sg+i6_sg) ).rotate( [0,90,0] )
   .translate( [ -i1_sg-i6_sg,-r4,ho3 ] ) 
   
- const springguide = cylinder( hs+eps,rs ).translate( [ 0,0,ho3-edge_margin-hs ] ) 
+ const springguide = cylinder( hs+eps,rs ).translate( [ 0,0,ho3-hb-hs ] ) 
   
  return bottom
   .add( top )
@@ -426,14 +426,14 @@ function button( ) {
   .trimByPlane( [ -1,0,0],-i1_sg )
   .trimByPlane( [ 1,0,0],-i1_sg )
   .add(
-   circle( i1 ).translate( [ 0,r8 ] ).add(
-    circle( i1 ).translate( [ head_widen,0 ] )
+   circle( i1_sg ).translate( [ 0,r8 ] ).add(
+    circle( i1_sg ).translate( [ head_widen,0 ] )
      .add(
-      circle( i1 ).translate( [ -head_widen,0 ] )
+      circle( i1_sg ).translate( [ -head_widen,0 ] )
      ).translate( [ 0,(r8+r6+head_offset)/2 ] )
    )
    .add(
-    circle( i1 ).translate( [ 0,r6+head_offset ] )
+    circle( i1_sg ).translate( [ 0,r6+head_offset ] )
    ).hull( ).extrude( hb+eps ).translate( [ 0,0,ho3-hb ] )
   )
   .add( hinge )
