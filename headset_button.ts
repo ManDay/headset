@@ -825,7 +825,7 @@ const stators = [
 
 const rotors = [
  spring( )
- ,rotated_button( alpha )
+ ,rotated_button( 0 )
  ,slider( )
  ,turntable( )
  ,cap_bottom( )
@@ -835,9 +835,6 @@ const rotors = [
  ,cap_top( ).mirror( [ 1,0,0 ] )
 ]
 
-export default main_retainer( )
 
-/*export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ).map( (o) => c(o
-//.trimByPlane( [ 0,-1,0 ],eps )
-) ) ) // */
+export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ).map( (o) => c(o) ) )
 
