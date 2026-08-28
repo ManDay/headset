@@ -603,13 +603,15 @@ function cable_slot( ) {
 }
 
 function cable_complement_mask( ) {
- return cube( [ ( speakers_dist-inlet_dist )+rc1+rc2+2*edge_margin,wall_strength( )+2*eps,ho4 ] )
-  .translate( [ inlet_dist-rc2-edge_margin,-rr2-wall_strength()-eps,hc ] )
+ const side_margin = 2*edge_margin
+
+ return cube( [ ( speakers_dist-inlet_dist )+rc1+rc2+2*side_margin,wall_strength( )+2*eps,ho4 ] )
+  .translate( [ inlet_dist-rc2-side_margin,-rr2-wall_strength()-eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [0] ) ) 
   .add(
-   cube( [ 2*(rc0+edge_margin),wall_strength( )+2*eps,ho4 ] )
-    .translate( [ -mic_dist-rc0-edge_margin,-rr2-wall_strength( )-eps,hc ] )
+   cube( [ 2*(rc0+side_margin),wall_strength( )+2*eps,ho4 ] )
+    .translate( [ -mic_dist-rc0-side_margin,-rr2-wall_strength( )-eps,hc ] )
     .rotate( [ 0,0,left_edge_angle( ) ] )
     .translate( retainer_center( ).concat( [0] ) )
   )
@@ -636,7 +638,7 @@ function top_cover_cs( ) {
  
 function top_cover_mask( ) {
   return top_cover_cs( ).subtract(
-  square( [ 4*wall_strength( ),wall_strength( ) ] ).translate( [ r5+hs1/2-2*wall_strength( ),button_actor_width( )+wall_strength( ) ] )
+  square( [ 4*wall_strength( ),2*wall_strength( ) ] ).translate( [ r5+hs1/2-2*wall_strength( ),button_actor_width( )+0*wall_strength( ) ] )
   )
   .extrude( ho4 )
   .translate( [ 0,0,ho2 ] )
@@ -834,7 +836,6 @@ const rotors = [
  ,cap_bottom( ).mirror( [ 1,0,0 ] )
  ,cap_top( ).mirror( [ 1,0,0 ] )
 ]
-
 
 export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ).map( (o) => c(o) ) )
 
