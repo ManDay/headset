@@ -4,7 +4,7 @@
 const printing_angle = 50
 const edge_margin = 1
 const sg = 0.2 // Slip-Gap
-const resolution = 64
+const resolution = 128
 
 // Radii
 const
@@ -52,8 +52,14 @@ ho4 = 21 // Button top
 
 // Spring retainer
 const
-rs = 2,
-hs = 3
+rs = 6,
+hs = 1.5,
+is = 3
+
+// Haptic lever
+const rl = 1.5, // Thickness
+ upsilon = 35, // resting surface angle
+ xi = 30 // Resting to sliding delta angle
 
 // Button thickness
 const hb = 3
@@ -73,23 +79,23 @@ phi = 8 // Incline
 const
 rc0 = 1.5, // Mic cable radius
 rc1 = 1.5, // Speaker cable radius
-rc2 = 4 // Inlet cable radius
+rc2 = 3 // Inlet cable radius
 
 // Chassis geometry
 const
 rf = 4, // Fillet radius
-rr2 = 10, // Main retainer cutout
-rr1 = 8, // Inner retainer cutout
-rr0 = 6 // Retainer radius
+rr2 = 12, // Main retainer cutout
+rr1 = 10, // Inner retainer cutout
+rr0 = 8 // Retainer radius
 
 const
 hc = (ho2+hi0)/2 // Cable holes altitude
 
 // Cable hole positions
 const
- inlet_dist = 2.2*rr2,
- speakers_dist = 3.4*rr2,
- mic_dist = 1.7*rr2
+ inlet_dist = 1.8*rr2,
+ speakers_dist = 2.8*rr2,
+ mic_dist = 1.2*rr2
 
 import {Manifold, CrossSection, getCircularSegments,only,setMaterial} from 'manifold-3d/manifoldCAD';
 const {cylinder, cube, sphere} = Manifold;
@@ -120,6 +126,10 @@ function asin( ratio ) {
  return Math.asin( ratio )*180/PI
 }
 
+function acos( ratio ) {
+ return Math.acos( ratio )*180/PI
+}
+
 function atan( ratio ) {
  return Math.atan( ratio )*180/PI
 }
@@ -139,8 +149,8 @@ function sector( a,radius ) {
 }
 
 function button_space( ) {
- return cube( [i1+eps,2*r6,2*(ho4+eps)] )
-  .translate( [-eps,-r6+r4,-2*ho4+eps ])
+ return cube( [2*i1,2*r6,2*(ho4+eps)] )
+  .translate( [-i1,-r6+r4,-2*ho4+eps ])
   .trimByPlane( [0,sin(alpha),cos(alpha)],-hb)
   .translate( [0,-r4,ho3])
 }
@@ -152,29 +162,72 @@ function radial_separation( v ) {
  return [ x - y/l*edge_margin, y + x/l*edge_margin ]
 }
 
-function turntable( ) {
+function turntable_cutout( ) {
+ const u = r0+rs+edge_margin
+ const zeta = asin( u/i2 )
+ const v = Math.sqrt(i2**2-u**2)
+ 
+ const cutout_half = square( r5+eps ).rotate( -zeta )
+  .intersect( square( r5+eps ).translate( [ 0,-eps ] ) )
+  .add( square( [ r5,v ] ) ) 
+ 
+ return cutout = cutout_half.add( cutout_half.mirror( [ 0,1 ] ) )
+  .extrude( ho4 )
+  .translate( [ 0,0,hi1 ] )
+  .rotate( [ 0,0,-90 ] )
+}
+
+function turntable_base( ) {
  const r3_sg = r3 + sg, hi0_sg = hi0 + sg, r2_sg = r2 - sg
  
- const tt = new CrossSection( [
+ return new CrossSection( [
   [-eps,hi0_sg-eps],[i2,hi0_sg-eps],
   [i2,hi1+edge_margin],
   [i2+(ho2-hi1-edge_margin)/tan(printing_angle),ho2],
   [-eps,ho2]
- ] ).revolve( ).intersect( cylinder( ho4,r3_sg ) )
+ ] ).revolve( )
+ .intersect( cylinder( ho4,r3_sg ) )
+ .add( cap_retainer( ).add( cap_retainer( ).mirror( [ 1,0,0 ] ) ).trimByPlane( [ 0,0,-1 ],-ho4 ) )
+ .subtract( button_space( ) )
+}
+
+function turntable_pin( ) {
+ const height = ho2-2-hs
+ return turntable_base( ).intersect( turntable_cutout( ) )
+  .subtract( cube( [ is*2,2*(r5+eps),2*ho4 ],true ).translate( [ 0,0,ho4+height-hs-edge_margin] ) )
+  .add(
+   cylinder( 2*(is+eps),hs )
+    .rotate( [ 0,90,0 ] )
+    .translate( [ -is-eps,-r0-rs-sin(90-printing_angle)*hs,height ] )
+  )
+  .trimByPlane( [ 0,-1,0 ],r0+rs )
+}
+
+function turntable( ) {
+ const r3_sg = r3 + sg, hi0_sg = hi0 + sg, r2_sg = r2 - sg
  
  const ret_b = sector( 135,r2_sg ).rotate( -135/2.0 ).extrude( hi1-hi0_sg+eps ).translate( [0,0,hi0_sg-eps ])
  
  const c_h = ho2-edge_margin
-
- return tt.add( cap_retainer( ).trimByPlane( [ 0,0,-1 ],-ho4 ) ).add( ret_b )
-  .subtract( button_space( ) ).subtract(
-   slider_base( r1+sg,i3+sg )
-    .translate( [ -i1,0,-c_h ] )
-    .trimByPlane( [-sin(printing_angle),0,-cos(printing_angle)],0 )
-    .translate( [ i1,0,c_h ] )
+ 
+ const slider_neg_half = slider_base( r1+sg,i3+sg )
+  .translate( [ -i1,0,-c_h ] )
+  .trimByPlane( [-sin(printing_angle),0,-cos(printing_angle)],0 )
+  .translate( [ i1,0,c_h ] )
+  .trimByPlane( [ 1,0,0 ],-eps )
+ 
+ return turntable_base( )
+  .subtract( turntable_cutout( ) )
+  .subtract(
+   cube( [ i1*2,r5+eps,ho4 ] ).translate( [ -i1,0,hi1 ] )
+    .intersect( cylinder( ho4,r1 ) )
   )
-  .trimByPlane( [0,0,1],hi0_sg ).trimByPlane( [ 1,0,0 ],0 )
+  .add( ret_b )
+  .add( ret_b.mirror( [ 1,0,0 ] ) )
+  .subtract( slider_neg_half.add( slider_neg_half.mirror( [ 1,0,0 ] ) ) )
+  .trimByPlane( [0,0,1],hi0_sg )
 }
+
 
 function cap_retainer( ) {
  const protrusion = ( (ho4-ho2)-2*edge_margin)/tan(printing_angle)
@@ -245,6 +298,29 @@ function cap_top( ) {
   .subtract( cap_cutout( ) )
 }
 
+function lever( ) {
+ const length = 10
+ return(
+  circle( rl )
+  .add(
+   circle( rl ).translate( [ length,0 ] )
+  )
+  .hull( )
+  .extrude( 2*(i1-edge_margin) )
+  .rotate( [ 90,0,90 ] )
+  .translate( [ -i1+edge_margin,0,0 ] )
+  .subtract( cube( [ 2*is,length,2*(rl+eps) ] ).translate( [ -is,0,-rl-eps ] ) )
+  .add(
+   cylinder( 2*(is+eps),hs )
+    .rotate( [ 0,90,0 ] )
+    .translate( [ -is-eps,length/2,0 ] )
+  )
+  .trimByPlane( [ 0,0,-1 ],-cos(printing_angle)*rl )
+  .rotate( [ printing_angle,0,0 ] )
+  .translate( [ 0,-i3+edge_margin+rl,hi0+rl ] )
+ )
+}
+
 function cap_bottom( ) {
  return cap_total( )
   .intersect( cap_cutout( ) )
@@ -256,39 +332,48 @@ function hinge( ) {
 }
 
 function slider_base( r1_sg,i3_sg ) {
- const bottom_margin_y = eps
- const bottom_margin_x = bottom_margin_y/tan(printing_angle)
- const height = i0 + eps
- const top_increment = bottom_margin_x+height/tan(printing_angle)
- const bottom_size = r1_sg
- const top_factor = (bottom_size+top_increment)/bottom_size
- const bottom_offset = bottom_size+i3_sg+bottom_margin_x
-
- const corners_neg = square( bottom_size ).extrude( bottom_margin_y+height,0,0,[ top_factor,top_factor ] )
-  .translate( [ -bottom_offset,-bottom_offset,0 ] )
+ const line_chamfer_neg = square( [ i3_sg,ho4 ] )
+  .translate( [ 0,-ho4/2 ] )
+  .rotate( 90-printing_angle )
+  .translate( [ i3_sg,0 ] )
   
- const radial_neg = cylinder( ho4+2*eps,r1_sg+eps )
-  .subtract( cylinder( bottom_margin_y+height,r1_sg+bottom_margin_x,r1_sg-top_increment ) )
+ const curve_chamfer_neg = square( [ i3_sg,ho4 ] )
+  .translate( [ 0,-ho4/2 ] )
+  .rotate( 90-printing_angle )
+  .translate( [ r1_sg,0 ] ) 
   
- const section_mask = cube( [ 2*i3_sg,2*(r1_sg+eps),2*(ho4+eps) ],true )
+ const curve_mask = cylinder( ho4+2*eps,r1_sg ).translate( [ 0,0,i0-ho4-eps ] )  
  
- return cylinder( ho4,r1_sg )
-  .intersect( section_mask.add( section_mask.rotate( [ 0,0,90 ] ) ) )
-  .translate( [ 0,0,-ho4+bottom_margin_y+i0 ] )
-  .subtract( corners_neg )
-  .subtract( corners_neg.rotate( [ 0,0,90 ] ) )
-  .subtract( corners_neg.rotate( [ 0,0,180 ] ) )
-  .subtract( corners_neg.rotate( [ 0,0,270 ] ) )
-  .subtract( radial_neg )
-  .rotate( [ 180,0,0 ] )
-  .translate( [ 0,0,bottom_margin_y+hi0 ] )
+ return square( [ 2*i3_sg,ho4 ] )
+  .translate( [ -i3_sg,i0-ho4 ] )
+  .subtract( line_chamfer_neg  )
+  .subtract( line_chamfer_neg.mirror( [ 1,0 ] ) )
+  .extrude( 2*(r1_sg + eps) ).translate( [ 0,0,-r1_sg-eps ] ).rotate( [ 90,0,90 ] )
+  .intersect( curve_mask )
+  .subtract( curve_chamfer_neg.revolve( ) )
+  .mirror( [ 0,0,1 ] )
+  .translate( [ 0,0,hi0 ] )
 }
 
 function slider( ) {
+ const i1_sg = i1-sg, rl_sg = rl+sg
+
+ const overhang_height = rl_sg*sin( 90-printing_angle )
+
  return slider_base( r1,i3 )
- .trimByPlane( [ 0,0,-1 ],-hi1 )
- .subtract( cylinder( hi3,r0 ).translate( [ 0,0,hi2 ] ) )
- .subtract( cylinder( hi3,rs ).translate( [0,0,-eps ] ) )
+  .subtract(
+   circle( rl_sg ).translate( [-i3+edge_margin+rl,hi0+rl] )
+    .add( square( eps ).translate( [ i3-eps-edge_margin,hi1 ] ) )
+    .hull( )
+    .add(
+     square( [ 2*i3,ho4 ] ).translate( [ -i3+edge_margin+rl-cos( 90-printing_angle )*rl_sg,hi1 ] )
+    )
+    .extrude( 2*(i1-edge_margin) )
+    .rotate( [ 90,0,90 ] )
+    .translate( [-i1+edge_margin,0,0] )
+    .add( cube( [ 2*is,2*i3,ho4 ] ).translate( [ -is,-i3-eps,hi1 ] ) )
+  )
+ .trimByPlane( [ 0,0,-1 ],-(hi0+rl+overhang_height+edge_margin) )
 }
 
 function retainer( ) {
@@ -318,8 +403,6 @@ function retainer( ) {
 }
 
 function base_disk( ) {
- const rs_sg = rs - sg
-
  const outer = r3+(hi0-2*edge_margin)/tan(printing_angle)
  
  const retainer = new CrossSection( [
@@ -347,7 +430,7 @@ function base_disk( ) {
   .trimByPlane( [ 0,0,1 ],0 )
   .subtract( neg )
   .subtract( slider_base( r1,i3 ) )
-  .add( cylinder( hs+( hi2-(hi0-i0) )+eps,rs_sg ).translate( [ 0,0,hi0-i0-eps ] ) )
+  .subtract( slider_base( r1,i3 ).rotate( [ 0,0,90 ] ) )
 }
 
 function button_actor_width( ) {
@@ -418,11 +501,36 @@ function button( ) {
  const hinge = sector( 180,i5_sg ).extrude( 2*(i1_sg+i6_sg) ).rotate( [0,90,0] )
   .translate( [ -i1_sg-i6_sg,-r4,ho3 ] ) 
   
- const springguide = cylinder( hs+eps,rs ).translate( [ 0,0,ho3-hb-hs ] ) 
   
+ const trans_r = 2*edge_margin
+ const trans_d = rl+3
+ const haptic_surface =
+  circle( trans_r ).translate( [ 0,trans_r ] )
+  .add( square( eps ).translate( [ -r5,0 ] ) )
+  .translate( [ 0,-trans_r ] )
+  .rotate( -xi )
+  .translate( [ 0,trans_r ] )
+  .add( square( eps ).translate( [ r5,0 ] ) )
+  .rotate( xi )
+  .hull( )
+  .rotate( -(90-printing_angle-upsilon) )
+  .intersect( square( r5 ).translate( [ -trans_d-eps,-eps ] ) )
+  .add(
+ square( r5 ).rotate( printing_angle ) 
+ .translate( [ -trans_d,-edge_margin ] )
+/*   square( r5 ).translate( [ -2*edge_margin-eps,0 ] )
+   .subtract( square( r5 ).rotate( -(90-printing_angle) ) )
+   .translate( [ -trans_d,-edge_margin ] )*/
+  )  
+  .extrude( 2*(i1-edge_margin) )
+  .rotate( [ 90,0,90 ] )
+  .trimByPlane( [ 0,1,0 ],-2*edge_margin-trans_d )
+  .translate( [ -i1+edge_margin,7,ho3-5.5 ] )
+ 
  return bottom
   .add( top )
   .add( button_shield( ) )
+  .add( haptic_surface )
   .trimByPlane( [ -1,0,0],-i1_sg )
   .trimByPlane( [ 1,0,0],-i1_sg )
   .add(
@@ -438,7 +546,6 @@ function button( ) {
   )
   .add( hinge )
   .trimByPlane( [ 0,0,-1],-ho3 )
-  .add( springguide )
 }
 
 function spring( ) {
@@ -482,7 +589,6 @@ function wall_strength( ) {
 
 function chassis( ) {
  const
-  separation = r6+rr2+wall_strength()*2,
   boundary = r7+hs1+wall_strength( )
 
  const retainer_circle = circle( rr2+wall_strength( ) ).translate( retainer_center( ) )
@@ -498,7 +604,7 @@ function chassis( ) {
 }
 
 function retainer_separation( ) {
- return r6+rr2+wall_strength()*2
+ return r6+rr2+wall_strength()
 }
 
 function retainer_center( ) {
@@ -649,7 +755,7 @@ function cable_cavity( ) {
 
  return cavity = top_neg_cs.intersect( chassis( ) )
   .subtract( circle( r5 ) )
-  .subtract( circle( rr2 ).translate( retainer_center( ) ) )
+  //.subtract( circle( rr2 ).translate( retainer_center( ) ) )
   .offset( -wall_strength( ) )
   .extrude( ho4+2*eps ).trimByPlane( [ 0,-1,0] )
   .translate( [ 0,0,-eps ] )
@@ -826,16 +932,24 @@ const stators = [
 ]
 
 const rotors = [
- spring( )
  ,rotated_button( 0 )
  ,slider( )
  ,turntable( )
+ ,turntable_pin( )
  ,cap_bottom( )
  ,cap_top( )
- ,turntable( ).mirror( [ 1,0,0 ] )
  ,cap_bottom( ).mirror( [ 1,0,0 ] )
  ,cap_top( ).mirror( [ 1,0,0 ] )
+ ,lever( )
 ]
 
-export default ( rotors.map( (o) => o.rotate( [ 0,0,90 ] ) ).concat( stators ).map( (o) => c(o) ) )
+export default (
+ rotors.map (
+  (o) => o.rotate( [ 0,0,90 ] )
+ )
+  .concat ( stators )
+  .map (
+   (o) => c( o.trimByPlane( [0,-1,0],0 ) )
+  )
+)
 
