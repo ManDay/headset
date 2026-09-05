@@ -421,7 +421,7 @@ function base_disk( ) {
  
  const neg = retainer_neg
   .add( retainer_neg.mirror( [1,1,0] ) )
-  .add( cylinder( hi1-hi0+eps,r2 ).translate( [ 0,0,hi0-eps ] ) )
+  .add( cylinder( hi1-hi0+2*eps,r2 ).translate( [ 0,0,hi0-eps ] ) )
   .subtract( cylinder( hi0+eps,r2 ).translate( [ 0,0,-eps ] ) )
  
  return cylinder( hi1+eps,r3 ).translate( [ 0,0,-eps ] )
