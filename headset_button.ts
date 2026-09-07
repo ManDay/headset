@@ -3,7 +3,7 @@
 // Generic parameters
 const printing_angle = 50
 const edge_margin = 1
-const sg = 0.2 // Slip-Gap
+const sg = 0.05 // Slip-Gap
 const resolution = 128
 
 // Radii
@@ -54,12 +54,12 @@ ho4 = 21 // Button top
 const
 rs = 6,
 hs = 1.5,
-is = 3
+is = 2
 
 // Haptic lever
 const rl = 1.5, // Thickness
  upsilon = 35, // resting surface angle
- xi = 30 // Resting to sliding delta angle
+ xi = 35 // Resting to sliding delta angle
 
 // Button thickness
 const hb = 3
@@ -194,7 +194,7 @@ function turntable_base( ) {
 function turntable_pin( ) {
  const height = ho2-2-hs
  return turntable_base( ).intersect( turntable_cutout( ) )
-  .subtract( cube( [ is*2,2*(r5+eps),2*ho4 ],true ).translate( [ 0,0,ho4+height-hs-edge_margin] ) )
+  .subtract( cube( [ is*2,2*(r5+eps),2*ho4 ],true ).translate( [ 0,0,ho4+height-hs-2*edge_margin] ) )
   .add(
    cylinder( 2*(is+eps),hs )
     .rotate( [ 0,90,0 ] )
@@ -309,15 +309,15 @@ function lever( ) {
   .extrude( 2*(i1-edge_margin) )
   .rotate( [ 90,0,90 ] )
   .translate( [ -i1+edge_margin,0,0 ] )
-  .subtract( cube( [ 2*is,length,2*(rl+eps) ] ).translate( [ -is,0,-rl-eps ] ) )
+  .subtract( cube( [ 2*is,length-2*edge_margin,2*(rl+eps) ] ).translate( [ -is,edge_margin,-rl-eps ] ) )
   .add(
    cylinder( 2*(is+eps),hs )
     .rotate( [ 0,90,0 ] )
     .translate( [ -is-eps,length/2,0 ] )
   )
   .trimByPlane( [ 0,0,-1 ],-cos(printing_angle)*rl )
-  .rotate( [ printing_angle,0,0 ] )
-  .translate( [ 0,-i3+edge_margin+rl,hi0+rl ] )
+  .rotate( [ 20+0*printing_angle,0,0 ] )
+  .translate( [ 0,-i3+2*edge_margin+rl,hi0+rl ] )
  )
 }
 
@@ -362,18 +362,18 @@ function slider( ) {
 
  return slider_base( r1,i3 )
   .subtract(
-   circle( rl_sg ).translate( [-i3+edge_margin+rl,hi0+rl] )
+   circle( rl_sg ).translate( [-i3+2*edge_margin+rl,hi0+rl] )
     .add( square( eps ).translate( [ i3-eps-edge_margin,hi1 ] ) )
     .hull( )
     .add(
-     square( [ 2*i3,ho4 ] ).translate( [ -i3+edge_margin+rl-cos( 90-printing_angle )*rl_sg,hi1 ] )
+     square( [ 2*i3,ho4 ] ).translate( [ -i3+2*edge_margin+rl-cos( 90-printing_angle )*rl_sg,hi1 ] )
     )
     .extrude( 2*(i1-edge_margin) )
     .rotate( [ 90,0,90 ] )
     .translate( [-i1+edge_margin,0,0] )
     .add( cube( [ 2*is,2*i3,ho4 ] ).translate( [ -is,-i3-eps,hi1 ] ) )
   )
- .trimByPlane( [ 0,0,-1 ],-(hi0+rl+overhang_height+edge_margin) )
+ .trimByPlane( [ 0,0,-1 ],-(hi0+rl+overhang_height+3*edge_margin) )
 }
 
 function retainer( ) {
@@ -454,10 +454,11 @@ function button_shield( ) {
 }
 
 function button( ) {
- const r5_sg = r5 - sg
- const i1_sg = i1 - sg
- const i5_sg = i5 - sg, i6_sg = i6 - sg
- const hi0_sg = hi0 + sg
+ const r1_sg = r1 - edge_margin,
+  r5_sg = r5 - sg,
+  i1_sg = i1 - sg,
+  i5_sg = i5 - sg, i6_sg = i6 - sg,
+  hi0_sg = hi0 + sg
 
  const rounding = circle( r5_sg ).translate( [ -r4,0 ] ).revolve( ).rotate( [ 0,90,0 ] )
   .translate( [ 0,-r4,ho3 ] )
@@ -518,14 +519,17 @@ function button( ) {
   .add(
  square( r5 ).rotate( printing_angle ) 
  .translate( [ -trans_d,-edge_margin ] )
-/*   square( r5 ).translate( [ -2*edge_margin-eps,0 ] )
-   .subtract( square( r5 ).rotate( -(90-printing_angle) ) )
-   .translate( [ -trans_d,-edge_margin ] )*/
   )  
   .extrude( 2*(i1-edge_margin) )
   .rotate( [ 90,0,90 ] )
   .trimByPlane( [ 0,1,0 ],-2*edge_margin-trans_d )
-  .translate( [ -i1+edge_margin,7,ho3-5.5 ] )
+  .translate( [ -i1+edge_margin,8,ho3-5.5 ] )
+  .intersect(
+   cylinder( 2*ho4,r1_sg )
+   .translate( [ 0,r4,-ho3 ] )
+   .rotate( [ alpha,0,0 ] )
+   .translate( [ 0,-r4,ho3 ] )
+  )
  
  return bottom
   .add( top )
@@ -932,7 +936,7 @@ const stators = [
 ]
 
 const rotors = [
- ,rotated_button( 0 )
+ ,rotated_button( alpha )
  ,slider( )
  ,turntable( )
  ,turntable_pin( )
