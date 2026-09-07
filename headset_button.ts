@@ -68,7 +68,7 @@ const hb = 3
 const
 r7 = r5, // Wall front
 hs0 = 6.5, // Meet against wall
-hs1 = 17.5, // Maximal height
+hs1 = 14, // Maximal height
 rs0 = 2, // Meet radius
 rs1 = 3.25, // Maximal radius
 hs2 = hi0+rs1+0, // Altitude
@@ -851,10 +851,10 @@ function switchbutton_holder( ) {
   .trimByPlane( [ 0,0,-1 ],-ho2 )
   .translate( [ r7,button_actor_width( ),0 ] )
 
- const neg = cube( [ hs1,rs1*2,ho4 ] )
+ const neg = cube( [ hs1,(rs1+edge_margin)*2,ho4 ] )
   .translate( [ 0,0,-ho4/2 ] )
   .rotate( [ 0,-phi,0 ] )
-  .translate( [ r7+cos( phi )*hs3,-rs1,ret_y ] )
+  .translate( [ r7+cos( phi )*hs3,-rs1-edge_margin,ret_y ] )
   
  return ext.subtract( neg )
   .subtract(
@@ -953,7 +953,7 @@ export default (
  )
   .concat ( stators )
   .map (
-   (o) => c( o.trimByPlane( [0,-1,0],0 ) )
+   (o) => c( o )
   )
 )
 
