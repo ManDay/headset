@@ -851,10 +851,10 @@ function switchbutton_holder( ) {
   .trimByPlane( [ 0,0,-1 ],-ho2 )
   .translate( [ r7,button_actor_width( ),0 ] )
 
- const neg = cube( [ hs1,(rs1+edge_margin)*2,ho4 ] )
+ const neg = cube( [ hs1,rs1*2+edge_margin,ho4 ] )
   .translate( [ 0,0,-ho4/2 ] )
   .rotate( [ 0,-phi,0 ] )
-  .translate( [ r7+cos( phi )*hs3,-rs1-edge_margin,ret_y ] )
+  .translate( [ r7+cos( phi )*hs3,-rs1-edge_margin/2,ret_y ] )
   
  return ext.subtract( neg )
   .subtract(
