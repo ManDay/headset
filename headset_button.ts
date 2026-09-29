@@ -34,6 +34,9 @@ i4 = 3, // Cap retainer base
 i5 = 3, // Hinge radius
 i6 = 2 // Hinge depth
 
+const
+ib = 1 // Base inset
+
 // Angles
 const
 alpha = 9.5, // Button incline
@@ -57,24 +60,31 @@ ho2 = 16, // Cap bottom
 ho3 = 20, // Swivel (Lever Axis Y)
 ho4 = 21 // Button top
 
-// Spring retainer
+/* Spring retainer
 const
 rs = 6,
 hs = 1,
-is = 2.5
+is = 2.5 */
+
+const pin = {
+ radius: 1,
+ height: 4,
+ distance: 3,
+ spacing: 4
+}
 
 // Haptic lever
 const levers = {
  radius: 1.5,
  margin: edge_margin,
  top: {
-  height: 6,
+  height: 7.1,
   width: 3,
   radius: 1.5,
-  leg: 2,
+  leg: 2.1,
   pin: {
    position: {
-    angle: 45,
+    angle: 42,
     separation: 0
    },
    radius: 1,
@@ -85,6 +95,7 @@ const levers = {
   height: 7,
   width: 3,
   radius: 1.5,
+  reenforce: 4,
   leg: 2
  }
 }
@@ -99,7 +110,7 @@ const hb = 3
 
 // Pushswitch parameters
 const
-r7 = r5+7, // Wall front
+r7 = r5+5, // Wall front
 hs0 = 6.5, // Meet against wall
 hs1 = 12, // Maximal height
 rs0 = 2, // Meet radius
@@ -247,7 +258,9 @@ function turntable_pin( ) {
 function turntable( ) {
  const r3_sg = r3 + sg, hi0_sg = hi0 + sg, r2_sg = r2 - sg
  
- const ret_b = sector( 135,r2_sg ).rotate( -135/2.0 ).extrude( hi1-hi0_sg+eps ).translate( [0,0,hi0_sg-eps ])
+ const ret_b = sector( 135,r2_sg ).rotate( -135/2.0 )
+  .extrude( hi1-hi0_sg+eps ).translate( [0,0,hi0_sg-eps ])
+  .subtract( cylinder( ho4,r1+eps ) ) 
  
  const c_h = ho2-edge_margin
  
@@ -260,7 +273,7 @@ function turntable( ) {
  return turntable_base( )
   .subtract( turntable_cutout( ) )
   .subtract(
-   cube( [ i1*2,r5+eps,ho4 ] ).translate( [ -i1,0,hi1 ] )
+   cube( [ i1*2,r5+eps,ho4 ] ).translate( [ -i1,0,0] )
     .intersect( cylinder( ho4,r1 ) )
   )
   .add( ret_b )
@@ -343,14 +356,14 @@ function cost( a,b,c ) {
  return acos( ((a+b)**2 - c**2)/(2*a*b) - 1 )
 }
 
-const lever_bottom_anchor = (hi0-i0-levers_indent.bottom+levers.bottom.radius)
+const lever_bottom_anchor = (hi0-i0-ib-levers_indent.bottom+levers.bottom.radius)
 const lever_top_anchor = (ho3-hb+levers_indent.top-levers.top.radius)
 const lever_dist = lever_top_anchor-lever_bottom_anchor
 
-function lever_press( slant ) {
+function lever_press( slant,bump ) {
  const y = ho3-lever_top_anchor
  const Dx = r4 - (r4*cos(slant) - y*sin(slant))
- const Dy = ho3 - (r4*sin(slant) + y*cos(slant)) - lever_bottom_anchor
+ const Dy = ho3 - (r4*sin(slant) + y*cos(slant)) - lever_bottom_anchor - bump
  const r = Math.sqrt( Dx**2 + Dy**2 )
  return {
   radius: r,
@@ -358,14 +371,14 @@ function lever_press( slant ) {
  }
 }
  
-function bottom_lever( slant=0 ) {
+function bottom_lever( slant=0,bump=0 ) {
  const i1_sg = i1-sg
  const r_sg = levers.radius - sg
  
  const base_angle = cost( levers.bottom.height,lever_dist,levers.top.height )
  const leg_joint = circle( levers.bottom.radius ).translate( [ 0,levers.bottom.leg ] )
  
- const bend = cost( levers.bottom.height,lever_press( slant ).radius,levers.top.height )- base_angle
+ const bend = cost( levers.bottom.height,lever_press( slant,bump ).radius,levers.top.height )- base_angle
  
  return (
   circle( levers.bottom.radius )
@@ -376,10 +389,10 @@ function bottom_lever( slant=0 ) {
    .translate( [ 0,levers.bottom.height ] )
    .rotate( base_angle )
    .add( leg_joint )
-   //.add( square( eps ).translate( [ levers.bottom.radius-eps,cos( base_angle )*( levers.bottom.height+r_sg )-eps ] ) )
+   .add( circle( levers.bottom.radius ).translate( [ 0,levers.bottom.reenforce ] ) )
    .hull( )
   )
-  .extrude( levers.bottom.width )
+  .extrude( levers.bottom.width-sg )
   .add(
    cylinder( levers.top.width+eps,r_sg )
    .translate( [ 0,levers.bottom.height,levers.bottom.width-eps ] )
@@ -391,11 +404,11 @@ function bottom_lever( slant=0 ) {
   )
  )
  .rotate( [ 90,0,-90 ] )
- .rotate( [ lever_press( slant ).angle-bend,0,0 ] )
- .translate( [ i1_sg,0,hi0-i0-levers_indent.bottom+levers.bottom.radius ] )
+ .rotate( [ lever_press( slant,bump ).angle-bend,0,0 ] )
+ .translate( [ i1_sg,0,lever_bottom_anchor+bump ] )
 }
 
-function top_lever( negative: boolean,slant=0 ) {
+function top_lever( negative: boolean,slant=0,bump=0 ) {
  const i1_sg = i1-sg
  const base_angle = cost( levers.top.height,lever_dist,levers.bottom.height )
  const leg_joint = circle( levers.top.radius ).translate( [ 0,levers.top.leg ] )
@@ -415,7 +428,7 @@ function top_lever( negative: boolean,slant=0 ) {
   }
  }
  
- const bend = cost( levers.top.height,lever_press( slant ).radius,levers.bottom.height )- base_angle
+ const bend = cost( levers.top.height,lever_press( slant,bump ).radius,levers.bottom.height )- base_angle
  
  return set_pin(
   circle( levers.top.radius )
@@ -445,7 +458,7 @@ function top_lever( negative: boolean,slant=0 ) {
   )
  )
  .rotate( [ -90,0,-90 ] )
- .rotate( [ slant+lever_press( slant ).angle+bend,0,0 ] )
+ .rotate( [ slant+lever_press( slant,bump ).angle+bend,0,0 ] )
  .translate( [ -i1_sg+levers.bottom.width,0,lever_top_anchor ] )
  .translate( [ 0,r4,-ho3 ] )
  .rotate( [ -slant,0,0 ] )
@@ -484,11 +497,47 @@ function slider_base( r1_sg,i3_sg ) {
   .intersect( curve_mask )
   .subtract( curve_chamfer_neg.revolve( ) )
   .mirror( [ 0,0,1 ] )
-  .translate( [ 0,0,hi0 ] )
+  .translate( [ 0,0,hi0-ib ] )
 }
 
 function slider( ) {
+ const base_angle = cost( levers.bottom.height,lever_dist,levers.top.height )
+ const bend = cost( levers.bottom.height,lever_press( alpha,i0 ).radius,levers.top.height )- base_angle
+ 
+ const side_neg =
+  circle( levers.bottom.radius+sg )
+  .add(
+   circle( levers.bottom.radius+sg ).translate( [ 0,ho4 ] )
+   .rotate( -lever_press( alpha,i0 ).angle+bend )
+  )
+  .add( circle( levers.bottom.radius+sg ).translate( [ 0,ho4 ] ) )
+  .hull( )
+  .extrude( levers.bottom.width+2*sg )
+  .rotate( [ 90,0,-90 ] )
+  .translate( [ i1,0,0 ] )
+  .add(
+   cylinder( levers.top.width+sg+eps,levers.bottom.radius+sg )
+   .rotate( [ 0,90,0 ] )
+   .translate( [ i1-levers.bottom.width-levers.top.width-2*sg,0,0 ] )
+  )
+  .translate( [ 0,0,lever_bottom_anchor ] )
+  
  return slider_base( r1,i3 )
+ .subtract(
+  square( ho4 ).translate( [ -ho4-r0,hi0-ib ] )
+  .add( square( ho4 ).translate( [ -ho4-levers.bottom.radius-edge_margin,lever_bottom_anchor ] ) )
+  .hull( )
+  .add( square( ho4 ).translate( [ -ho4,lever_bottom_anchor ] ) )
+  .extrude( 2*i1 )
+  .rotate( [ 90,0,-90 ] )
+  .translate( [ i1,0,0 ] )
+  .add(
+   cube( [ 2*(i1-levers.bottom.width),r1,ho4 ],true )
+   .translate( [ 0,0,ho4/2+lever_bottom_anchor ] )
+  )
+ )
+ .subtract( side_neg ).subtract( side_neg.mirror( [ 1,0,0 ] ) )
+ .trimByPlane( [ 0,0,-1 ],-ho0 )
 }
 
 function retainer( ) {
@@ -549,8 +598,9 @@ function base_disk( ) {
   .subtract( edge_neg.rotate( [ 0,0,180 ] ) )
   .subtract( neg )
   .trimByPlane( [ 0,0,1 ],0 )
-  .subtract( slider_base( r1,i3 ) )
-  .subtract( slider_base( r1,i3 ).rotate( [ 0,0,90 ] ) )
+  .subtract( cylinder( ho4,r1 ).translate( [ 0,0,hi0-ib ] ) )
+  .subtract( slider_base( r1+sg,i3+sg ) )
+  .subtract( slider_base( r1+sg,i3+sg ).rotate( [ 0,0,90 ] ) )
 }
 
 function button_actor_width( ) {
@@ -602,7 +652,7 @@ function button( slant=0 ) {
  const h = ho3-hi1-edge_margin*2
  const protrusion = (w+h*sin(beta))/cos(beta)-w
  const height = tan(printing_angle)*(protrusion+eps)
- const theta = asin( button_actor_width( )/r3 )
+ const theta = asin( (button_actor_width( )-sg)/r3 )
  const theta_min = Math.min( theta,45/2 )
  const ret = new CrossSection( [
   [r3+eps,hi1+2*edge_margin+height],
@@ -613,7 +663,7 @@ function button( slant=0 ) {
   
  const bottom = cylinder( ho3,r4 ).subtract( cylinder( ho3+eps,r3 ) )
   .add( ret )
-  .intersect( cube( [ 2*button_actor_width( ),r5_sg,ho4 ] ).translate( [ -button_actor_width( ),-r5_sg,0 ] ) )
+  .intersect( cube( [ 2*(button_actor_width( )-sg),r5_sg,ho4 ] ).translate( [ -(button_actor_width( )-sg),-r5_sg,0 ] ) )
   .intersect(
    cylinder( 2*(i1+eps),ho3-hi0_sg ).rotate( [ 0,90,0 ] )
     .translate( [ -i1-eps,-r4,ho3 ] )
@@ -627,13 +677,14 @@ function button( slant=0 ) {
    .rotate( [ 0,-90,0 ] )
    .translate( [ i1_sg+eps,0,ho3-hb ] )
    
- const center_reenforce_width = i1_sg - levers.bottom.width - levers.top.width - sg
+ const base_angle = cost( levers.top.height,lever_dist,levers.bottom.height )
+ const bend = cost( levers.top.height,lever_press( alpha,i0 ).radius,levers.bottom.height )- base_angle
  
  const notch = circle( levers.top.radius + sg )
-  .add( circle( levers.top.radius ).translate( [ 1.5*edge_margin+3*levers.top.radius,0,0 ] ) )
+  .add( circle( levers.top.radius + sg ).translate( [ 1.5*edge_margin+3*levers.top.radius,0,0 ] ) )
   .hull( )
   .extrude( levers.top.width+2*sg )
-  .rotate( [ 90,0,90 ] )
+  .rotate( [ 90,90-(alpha+lever_press( alpha,i0 ).angle+bend),90 ] )
   .translate( [ i1_sg-levers.bottom.width-levers.top.width-sg,0,lever_top_anchor ] )
   
  return bottom
@@ -646,12 +697,6 @@ function button( slant=0 ) {
    .translate( [ -(i1_sg-levers.bottom.width+sg),0,ho3-hb ] )
   )
   .add( reenforce ).add( reenforce.mirror( [ 1,0,0 ] ) )
-  .add(
-   cylinder( center_reenforce_width*2,levers.top.radius+edge_margin )
-   .scale( [ 1,1.5,1 ] )
-   .rotate( [ 0,-90,0 ] )
-   .translate( [ center_reenforce_width,2.5*levers.top.radius+1.5*edge_margin+sg,ho3-hb ] )
-  )
   .trimByPlane( [ -1,0,0],-i1_sg )
   .trimByPlane( [ 1,0,0],-i1_sg )
   .add(
@@ -1090,29 +1135,31 @@ const stators = [
  ,retainer().rotate( [ 0,0,180 ] )
 ]
 
-push_angle = alpha*0
+const push_angle = 0*alpha
+const bump = 0
 
 const rotors = [
  ,button( push_angle )
-// ,slider( )
- ,top_lever( true,push_angle )
- ,top_lever( false,push_angle ).mirror( [ 1,0,0 ] )
+ ,slider( )
+ ,top_lever( true,push_angle,bump )
+ ,top_lever( false,push_angle,bump ).mirror( [ 1,0,0 ] )
  ,turntable( )
  ,turntable_pin( )
  ,cap_bottom( )
  ,cap_top( )
  ,cap_bottom( ).mirror( [ 1,0,0 ] )
  ,cap_top( ).mirror( [ 1,0,0 ] )
- ,bottom_lever( push_angle )
- ,bottom_lever( push_angle ).mirror( [ 1,0,0 ] )
+ ,bottom_lever( push_angle,bump )
+ ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
 ]
 
-export default (
+export default [turntable( ),turntable_pin( )]
+/*export default (
  rotors.map (
   (o) => o.rotate( [ 0,0,90 ] )
  )
   .concat ( stators )
   .map (
-   (o) => c( o.trimByPlane( [ 0,1,0 ] ) )
+   (o) => c( o.trimByPlane( [ 0,1,0 ],0 ) )
   )
 )//*/
