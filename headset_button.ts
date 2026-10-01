@@ -60,12 +60,11 @@ ho2 = 16, // Cap bottom
 ho3 = 20, // Swivel (Lever Axis Y)
 ho4 = 21 // Button top
 
-/* Spring retainer
+// Spring retainer
 const
 rs = 6,
 hs = 1,
-is = 2.5 */
-
+is = 2.5
 const pin = {
  radius: 1,
  height: 4,
@@ -193,8 +192,8 @@ function sector( a,radius ) {
 }
 
 function button_space( ) {
- return cube( [2*i1,2*r6,2*(ho4+eps)] )
-  .translate( [-i1,-r6+r4,-2*ho4+eps ])
+ return cube( [2*(i1+eps),2*r6,2*(ho4+eps)] )
+  .translate( [-i1-eps,-r6+r4,-2*ho4+eps ])
   .trimByPlane( [0,sin(alpha),cos(alpha)],-hb)
   .translate( [0,-r4,ho3])
 }
@@ -207,26 +206,26 @@ function radial_separation( v ) {
 }
 
 function turntable_cutout( ) {
- const u = r0+rs+edge_margin
- const zeta = asin( u/i2 )
- const v = Math.sqrt(i2**2-u**2)
+ const capretainer = i4+( (ho4-ho2)-2*edge_margin)/tan(printing_angle)
+ const sliderret = r0 + edge_margin
+ const ylimit = capretainer > sliderret ? capretainer : sliderret
  
- const cutout_half = square( r5+eps ).rotate( -zeta )
-  .intersect( square( r5+eps ).translate( [ 0,-eps ] ) )
-  .add( square( [ r5,v ] ) ) 
+ const section = cube( [ r5,r5,ho4 ] ).rotate( [ 0,0,180+acos(ylimit/i2) ] )
+  .trimByPlane( [ 0,-1,0 ],ylimit )
   
- const stabilizer_height = ho2 - hi1 - edge_margin - tan(printing_angle)*(r3-i2)
- 
- return cutout_half.add( cutout_half.mirror( [ 0,1 ] ) )
-  .extrude( ho4 )
-  .translate( [ 0,0,hi1 ] )
-  .rotate( [ 0,0,-90 ] )
+ const half = section
+  .trimByPlane( [ 0,0,1 ],hi1 + pin.height )
   .add(
-   cube( [ 2*r5,r5,stabilizer_height+eps ] )
-    .translate( [ -r5,-r5-r0-rs,ho2-stabilizer_height+edge_margin ] )
-    .trimByPlane( [ 1,-1/tan(printing_angle),0 ] )
-    .trimByPlane( [ -1,-1/tan(printing_angle),0 ] )
+   cylinder( ho4,r5+eps )
+   .subtract( cylinder( ho4+2*eps,i2 ).translate( [ 0,0,-eps ] ) )
+   .intersect( section )
   )
+  .add( cube( [ i1+eps,ylimit+eps,ho4 ] ).translate( [ -eps,-ylimit-eps,hi1+pin.height ] ) )
+  .trimByPlane( [ 1,0,0 ],-eps )
+  .add( cube( [ pin.spacing,r5,pin.height+eps ] ).translate( [ 0,-r5,hi1 ] ) )
+  
+ return half.add( half.mirror( [ 1,0,0 ] ) )
+
 }
 
 function turntable_base( ) {
@@ -240,19 +239,21 @@ function turntable_base( ) {
  ] ).revolve( )
  .intersect( cylinder( ho4,r3_sg ) )
  .add( cap_retainer( ).add( cap_retainer( ).mirror( [ 1,0,0 ] ) ).trimByPlane( [ 0,0,-1 ],-ho4 ) )
- .subtract( button_space( ) )
 }
 
 function turntable_pin( ) {
- const height = ho2-3-hs
  return turntable_base( ).intersect( turntable_cutout( ) )
-  .subtract( cube( [ is*2,2*(r5+eps),2*ho4 ],true ).translate( [ 0,0,ho4+height-hs-2*edge_margin] ) )
-  .add(
-   cylinder( 2*(is+eps),hs )
-    .rotate( [ 0,90,0 ] )
-    .translate( [ -is-eps,-r0-rs-sin(90-printing_angle)*hs,height ] )
+  .trimByPlane( [ 0,0,1 ],hi1+pin.height )
+  .trimByPlane( [ 0,-1,0 ],r0 )
+  .trimByPlane( [ 0,0,-1 ],-ho2 )
+  .subtract(
+   button_space( ).intersect( cube( [ 2*i1,2*r5,2*ho4 ],true ) )
+   .add( button_space( ).intersect( cube( [ 2*(i1+eps),2*r0,2*ho4 ],true ) ) )
   )
-  .trimByPlane( [ 0,-1,0 ],r0+rs )
+  .subtract(
+   cylinder( ho4,pin.radius )
+   .translate( [ 0,-r0-pin.radius-pin.distance,0 ] )
+  )
 }
 
 function turntable( ) {
@@ -279,7 +280,14 @@ function turntable( ) {
   .add( ret_b )
   .add( ret_b.mirror( [ 1,0,0 ] ) )
   .subtract( slider_neg_half.add( slider_neg_half.mirror( [ 1,0,0 ] ) ) )
+  .add(
+   cylinder( pin.height+eps+edge_margin,pin.radius )
+   .translate( [ 0,-r0-pin.radius-pin.distance,hi1-eps ] )
+  )
   .trimByPlane( [0,0,1],hi0_sg )
+  .subtract(
+   button_space( ).intersect( cube( [ 2*i1,2*r6,2*ho4 ],true ) )
+  )
 }
 
 
@@ -1153,7 +1161,7 @@ const rotors = [
  ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
 ]
 
-export default [turntable( ),turntable_pin( )]
+export default [turntable_pin( )]
 /*export default (
  rotors.map (
   (o) => o.rotate( [ 0,0,90 ] )
