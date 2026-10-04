@@ -72,6 +72,14 @@ const pin = {
  spacing: 4
 }
 
+const mediator = {
+ width: 3,
+ margin: 0.5,
+ buffer: 3,
+ altitude: 2,
+ height: 4
+}
+ 
 // Haptic lever
 const levers = {
  radius: 1.5,
@@ -107,15 +115,24 @@ const levers_indent = {
 // Button thickness
 const hb = 3
 
-// Pushswitch parameters
+const switchframe = {
+ length: 12,
+ space: 3.25+edge_margin/2,
+ radius: 2,
+ x: r5+5,
+ y: 3.25+1,
+ incline: 10,
+ wall: 1.5
+}
+
+// Pushswitch parameters (anchor at wall meet center)
 const
-r7 = r5+5, // Wall front
-hs0 = 6.5, // Meet against wall
 hs1 = 12, // Maximal height
 rs0 = 2, // Meet radius
 rs1 = 3.25, // Maximal radius
-hs2 = hi0+rs1+1, // Altitude
 hs3 = 1.5, // Retainer wall
+r7 = r5+5, // Wall front (X)
+hs2 = hi0+rs1+1, // Altitude (Y)
 phi = 10 // Incline
 
 // Cable parameters
@@ -548,14 +565,13 @@ function slider( ) {
  .trimByPlane( [ 0,0,-1 ],-ho0 )
 }
 
-function retainer( ) {
+function retainer( stopper: boolean = false ) {
  const i2_sg = i2 + sg, hi1_sg = hi1 + sg
  
  const border = hi1_sg+edge_margin+tan(printing_angle)*(r2-i2_sg)
   
- const theta = asin( button_actor_width( )/r3 )
- const theta_min = Math.min( theta,45/2 )
-
+ const delta_theta = stopper ? Math.max( 45/2-asin( button_actor_width( )/r3 ),0 ) : 0
+ 
  const base = new CrossSection( [ 
   [r2,0],[r3+(hi0-2*edge_margin)/tan(printing_angle),0],
   [r3+(hi0-2*edge_margin)/tan(printing_angle),edge_margin],
@@ -565,7 +581,11 @@ function retainer( ) {
   [i2_sg,hi1_sg],[r2,hi1_sg],
  ] )
   .revolve( )
-  .intersect( sector( 90-2*theta_min,r5+eps ).rotate( theta_min ).extrude( ho1*2 ) )
+  .intersect(
+   sector( 45+delta_theta,r5+eps )
+   .rotate( 45/2 )
+   .extrude( ho1*2 )
+  )
   
  const mask = sector( 45/2,r2 ).extrude( ho4 )
   
@@ -574,39 +594,34 @@ function retainer( ) {
 }
 
 function base_disk( ) {
- const delta_r = (hi0-2*edge_margin)/tan(printing_angle)
- const outer = r3+delta_r
- const theta = asin( button_actor_width( )/r3 )
- const theta_min = Math.min( theta,45/2 )
- const theta_bar = 90 - 2*theta_min
+ const { sect_mask,ret_above,ret_below,ret_none,ret_full }= base_lock_mask( )
+ const delta_theta = Math.max( 45/2-asin( button_actor_width( )/r3 ),0 )
  
- const edge_neg = square( r3 ).translate( [ -r3/2,-r3 ] )
-  .rotate( printing_angle )
-  .translate( [ r3,edge_margin ] )
-  .revolve( )
-  .subtract( cylinder( ho4+edge_margin+eps,r3 ).translate( [ 0,0,-ho4 ] ) )
-  .intersect(
-   sector( 180-3/2*theta_bar,outer+eps ).rotate( 45 ).extrude( ho0+2*eps )
-    .translate( [ 0,0,-eps ] )
+ const notch_neg = sector( 45,r3+eps ).subtract( circle( i2 ) ).rotate( 45/2 ).extrude( ho1 ).translate( [ 0,0,hi0-(2*hi0-hi1) ] )
+  
+ const mask = cylinder(hi0+2*eps,r2).translate( [0,0,-eps] ).add(
+  ret_above.intersect(
+   sect_mask( 45/2-delta_theta+90-45/2+eps,180+45+45/2+delta_theta )
+   .add( sect_mask( 45/2-delta_theta+90-45/2+eps,45+45/2 ) )
   )
-
- const retainer_neg = sector( theta_bar,outer+eps ).rotate( theta_min ).subtract( circle( eps ) ).extrude( hi3*2 ).translate( [0,0,-eps] )
+ )
+ .add(
+  ret_none.intersect(
+   sect_mask( 45+delta_theta,-45/2-delta_theta )
+   .add( sect_mask( 45+delta_theta,180-45/2-delta_theta ) )
+  )
+ )
  
- const notch_neg = sector( 45,r2+eps ).subtract( circle( i2 ) ).rotate( 45/2 ).extrude( ho1 ).translate( [ 0,0,hi0-(2*hi0-hi1) ] )
- 
- const neg = retainer_neg
-  .add( retainer_neg.mirror( [1,1,0] ) )
-  .add( cylinder( hi1-hi0+2*eps,r2 ).translate( [ 0,0,hi0-eps ] ) )
-  .subtract( cylinder( hi0+eps,r2 ).translate( [ 0,0,-eps ] ) )
-  .add( notch_neg ).add( notch_neg.rotate( [ 0,0,180 ] ) )
- 
- return cylinder( hi1+eps,r3 ).translate( [ 0,0,-eps ] )
-  .add( cylinder( hi0+eps,outer ).translate( [ 0,0,-eps ] ) )
-  .subtract( edge_neg )
-  .subtract( edge_neg.rotate( [ 0,0,180 ] ) )
-  .subtract( neg )
+ return cylinder( hi1-hi0+eps,r3 ).translate( [ 0,0,hi0-eps ] )
+  .subtract(
+   cylinder( ho4,r2 )
+   .add( sect_mask( 45,45/2) )
+   .add( sect_mask( 45+delta_theta,180+45/2 ) )
+  )
+  .add( mask.trimByPlane( [ 0,0,-1 ],-hi0 ) )
+  .subtract( notch_neg ).subtract( notch_neg.rotate( [ 0,0,180 ] ) )
   .trimByPlane( [ 0,0,1 ],0 )
-  .subtract( cylinder( ho4,r1 ).translate( [ 0,0,hi0-ib ] ) )
+  .subtract( cylinder( ho4,r1+sg ).translate( [ 0,0,hi0-ib ] ) )
   .subtract( slider_base( r1+sg,i3+sg ) )
   .subtract( slider_base( r1+sg,i3+sg ).rotate( [ 0,0,90 ] ) )
 }
@@ -928,11 +943,11 @@ function top_cover_mask( ) {
 }
 
 function cable_cavity( ) {
- const rail_height =( sin(phi)*hs3+hs2+cos(phi)*rs1 )/2
- const holder_strength = button_actor_width( ) - (rs1+edge_margin/2)
+ const holder_strength = button_actor_width( ) - rs1 - edge_margin/2
+ const rail_height = mediator.altitude + mediator.height - hi0
  
  const rail = cube( [ 2*edge_margin+eps,holder_strength+eps,rail_height+eps ] )
-  .translate( [ r7+hs1-2*edge_margin,rs1+edge_margin/2-eps,hi0-eps ] )
+  .translate( [ r7+hs1-2*edge_margin,rs1+edge_margin/2,hi0-eps ] )
  
  const action_incision_neg = cube( [ r7+hs1,2*button_actor_width( ),ho4+2*eps ] ).translate( [ 0,-button_actor_width( ),-eps ] )
 
@@ -1001,98 +1016,93 @@ function main_retainer( ) {
 }
 
 function pswitch_holder( ) {
- const inner_slice = cube( [ 4*hs1,2*rs1+edge_margin,2*ho4 ],true )
- const rail_height = (hi0*2+hs2+rs1)/3
- const top = hs2+rs1
-
- const rail = cube( [ hs1,button_actor_width( ),ho4 ] )
-  .translate( [ -edge_margin-eps,0,-ho4 ] )
-  .rotate( [ 0,-phi,0 ] )
-  .translate( [ 0,0,-top+rail_height ] )
-  .rotate( [ 0,phi,0 ] )
-  .subtract( inner_slice )
-
- return cube( [ hs3,2*button_actor_width( ),ho4 ],true )
+ const s = switchframe
+ const railplane = cube( [ 2*(s.length+eps),2*(button_actor_width( )+eps ),2*( mediator.height+mediator.altitude ) ],true )
+ 
+ return cube( [ s.wall+eps,2*(button_actor_width( )+eps),ho4 ] )
+  .translate( [ -s.wall/2-eps,-button_actor_width( )-eps,-ho4/2 ] )
   .subtract(
-   cylinder( hs1,rs0 )
-    .rotate( [ 0,90,0 ] )
-    .translate( [ -hs3-eps,0,-top+hs2 ] )
+   cylinder( s.length,s.radius )
+   .rotate( [ 0,90,0 ] )
+   .translate( [ -s.wall,0,0 ] )
   )
-  .translate( [ -hs3/2,0,0 ] )
+  .translate( [ s.wall/2,0,-s.space ] )
   .rotate( [ 0,-phi,0 ] )
-  .trimByPlane( [ 0,0,-1 ],0 )
-  .translate( [ hs3-edge_margin,0,0 ] )
-  .subtract( rail )
-  .subtract( rail.mirror( [ 0,1,0 ] ) )
+  .trimByPlane( [ 0,0,-1 ] )
   .add(
-   cube( [ 4*hs1,2*button_actor_width( ),ho4 ],true )
-    .translate( [ 0,0,-ho4/2 ] )
-    .rotate( [ 0,printing_angle-90+phi,0 ] )
-    .trimByPlane( [ 1,0,0 ],-eps )
-    .rotate( [ 0,-phi,0 ] )
-    .subtract( inner_slice )
-    .subtract(
-     cube( [ 4*hs1,2*(button_actor_width( )+eps ),ho4 ],true )
-      .translate( [ 0,0,-ho4/2 ] )
-      .rotate( [ 0,-phi,0 ] )
-      .translate( [ 0,0,-top+rail_height ] )
-      .rotate( [ 0,phi,0 ] )
-    )
+   cube( [ 2*(s.length+eps),2*(button_actor_width( )+eps),ho4 ],true )
+   .subtract(
+    cube( [ 2*s.length+4*eps,2*s.space,ho4+2*eps ],true )
+    .translate( [ eps,0,0 ] )
+   )
+   .translate( [ s.length,0,0 ] )
+   .rotate( [ 0,-phi,0 ] )
+   
+   .rotate( [ 0,phi,0 ] ).translate( [ 0,0,s.space ] ).rotate( [ 0,-phi,0 ] )
+   .translate( [ 0,0,s.y+hi0 ] )
+   .subtract( railplane )
+   .translate( [ 0,0,-s.y-hi0 ] )
+   .rotate( [ 0,phi,0 ] ).translate( [ 0,0,-s.space ] ).rotate( [ 0,-phi,0 ] )
   )
-  .translate( [ edge_margin-hs3,0,0 ] )
   .rotate( [ 0,phi,0 ] )
-  .translate( [ 0,0,rs1 ] )
+  .trimByPlane( [ 1,0,0 ],0 )
+  .rotate( [ 0,90-printing_angle,0 ] )
+  .trimByPlane( [ 0,0,-1 ],0 )
+  .rotate( [ 0,printing_angle-90,0 ] )
+  .translate( [ -s.wall,0,s.space ] )
   .rotate( [ 0,-phi,0 ] )
-  .translate( [ r7,0,hs2 ] )
-  .trimByPlane( [ 0,0,1 ],hi0 )
-  .trimByPlane( [ 0,0,-1 ],-ho2 )
-  .trimByPlane( [ -1,0,0 ],-r7-hs1 )
-  .subtract( cable_slot( ) )
+  .trimByPlane( [ 0,0,1 ],-s.y )
+  .trimByPlane( [ 0,0,-1 ],-ho2+hi0+s.y )
+  .trimByPlane( [ -1,0,0 ],-s.length )
+  .trimByPlane( [ 0,1,0 ],-button_actor_width( ) )
+  .trimByPlane( [ 0,-1,0 ],-button_actor_width( ) )
+  .translate( [ 0,0,s.y+hi0 ] )
+  .subtract( railplane.subtract( cube( [ 2*s.wall,2*s.space,ho4 ],true ) ) )
+  .translate( [ s.x,0,0 ] )
+
 }
 
-function bottom_cover( ) {
- const delta_r = (hi0-2*edge_margin)/tan(printing_angle)
- const outer = r3+delta_r
- const theta = asin( button_actor_width( )/r3 )
- const theta_min = Math.min( theta,45/2 )
- const theta_bar = 90 - 2*theta_min
+function base_lock_mask( ) {
+ function sect_mask( a,a0 ) {
+  return sector( a,ho4 ).rotate( a0 ).extrude( ho4+2*eps ).translate( [ 0,0,-eps ] )
+   .subtract( cylinder( ho4,eps ).translate( [ 0,0,-ho4/2 ] ) )
+ }
+
+ const outer = r3+(hi0-2*edge_margin)/tan(printing_angle)
  
- const disk_edge_neg = square( r3 ).translate( [ -r3/2,0 ] )
-  .rotate( printing_angle )
-  .translate( [ outer,hi0-edge_margin ] )
-  .revolve( )
-  .intersect( cylinder( ho4+eps,outer ).translate( [ 0,0,-eps ] ) )
-  
- const ret_edge_neg = square( r3 ).translate( [ -r3/2,-r3 ] )
+ const ret_below = square( 2*r3 ).translate( [ -3/2*r3,-2*r3 ] )
   .rotate( -printing_angle )
   .translate( [ outer,edge_margin ] )
   .revolve( )
   .intersect( cylinder( ho4+eps,outer ).translate( [ 0,0,-eps ] ) )
+  .add( cylinder( ho4+eps,r3 ).translate( [ 0,0,-eps ] ) )
+//  .trimByPlane( [ 0,0,-1 ],-hi0-eps )
+  
+ const ret_above = ret_below.mirror( [ 0,0,1 ] ).translate( [ 0,0,hi0 ] )
+ const ret_none = cylinder( hi0+2*eps,outer ).translate( [ 0,0,-eps ] )
+ const ret_full = cylinder( hi0+2*eps,r2 ).translate( [ 0,0,-eps ] )
  
- const edges_neg =
-  sector( theta_bar,outer ).rotate( theta_min-theta_bar ).extrude( hi0+2*eps )
-   .translate( [ 0,0,-eps ] )
-   .add(
-    disk_edge_neg.intersect(
-     sector( 180-3/2*theta_bar,outer+eps )
-      .rotate( 90-theta_min )
-      .extrude( ho1+2*eps )
-      .translate( [ 0,0,-eps ] )
-    )
-   )
-   .add(
-    ret_edge_neg.intersect(
-     sector( theta_min+theta_bar,outer+eps )
-      .extrude( ho1+2*eps )
-      .translate( [ 0,0,-eps ] )
-    )
-   )
-   .add( disk_edge_neg.intersect( ret_edge_neg ) )
-   
- const base_neg = cylinder( hi0+2*eps,r3 )
-  .translate( [ 0,0,-eps ] )
-  .add( edges_neg )
-  .add( edges_neg.rotate( [ 0,0,180 ] ) )
+ return { sect_mask,ret_above,ret_below,ret_none,ret_full }
+}
+
+function bottom_cover( ) { 
+ const { sect_mask,ret_above,ret_below,ret_none,ret_full }= base_lock_mask( )
+ const delta_theta = Math.max( 45/2-asin( button_actor_width( )/r3 ),0 )
+ 
+ const mask = ret_above.intersect( ret_below )
+ .add(
+  ret_above.intersect(
+   sect_mask( 45+90,90-45/2 )
+   .add( sect_mask( 45+90-delta_theta,3*90-45/2+delta_theta ) )
+  )
+ )
+ .add(
+  ret_below.intersect( 
+   sect_mask( 45,45/2 ).add( sect_mask( 45+delta_theta,180+45/2 ) )
+  )
+ )
+ .add( ret_none.intersect( sect_mask( 45+delta_theta,-45/2-delta_theta ) ) )
+ .add( ret_none.intersect( sect_mask( 45+delta_theta,180-45/2-delta_theta ) ) )
  
  const shield_slice = button_shield( )
   .translate( [ 0,r4,-ho3 ] )
@@ -1126,9 +1136,17 @@ function bottom_cover( ) {
     .mirror( [ 0,0,1 ] )
     .translate( retainer_center( ).concat( [ ho4/2 ] ) )
   )
-  .subtract( base_neg )
   .subtract( shield_neg_alpha )
   .subtract( shield_neg_beta )
+  .subtract( mask )
+  .subtract(
+   cube( [ r7+hs1-2*edge_margin,2*button_actor_width( ),hi1 ] )
+   .translate( [ 0,-button_actor_width( ),mediator.altitude ] )
+   .subtract(
+    cube( [ hs1+hs3+eps,2*rs1+edge_margin,ho4 ] )
+    .translate( [ r7-hs3,-rs1-edge_margin/2,0 ] )
+   )
+  ) 
 }
 
 const stators = [
@@ -1139,8 +1157,8 @@ const stators = [
  ,top_cover( )
  ,pswitch_holder( )
  ,base_disk( )
- ,retainer()
- ,retainer().rotate( [ 0,0,180 ] )
+ ,retainer( true )
+ ,retainer( true ).rotate( [ 0,0,180 ] )
 ]
 
 const push_angle = 0*alpha
@@ -1161,7 +1179,13 @@ const rotors = [
  ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
 ]
 
-export default [turntable_pin( )]
+export default  [
+ bottom_cover()
+ ,c(retainer(false))
+ ,c(retainer( true ).rotate( [ 0,0,180 ] ))
+ ,c(base_disk())
+
+]
 /*export default (
  rotors.map (
   (o) => o.rotate( [ 0,0,90 ] )
