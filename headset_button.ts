@@ -74,10 +74,11 @@ const pin = {
 
 const mediator = {
  width: 3,
- margin: 0.5,
- buffer: 3,
+ margin: 0.2,
+ buffer: 3.4,
  altitude: 2,
- height: 4
+ height: 4,
+ range: 4
 }
  
 // Haptic lever
@@ -116,10 +117,10 @@ const levers_indent = {
 const hb = 3
 
 const switchframe = {
- length: 12,
+ length: 11,
  space: 3.25+edge_margin/2,
  radius: 2,
- x: r5+5,
+ x: r5+6,
  y: 3.25+1,
  incline: 10,
  wall: 1.5
@@ -127,11 +128,9 @@ const switchframe = {
 
 // Pushswitch parameters (anchor at wall meet center)
 const
-hs1 = 12, // Maximal height
 rs0 = 2, // Meet radius
 rs1 = 3.25, // Maximal radius
 hs3 = 1.5, // Retainer wall
-r7 = r5+5, // Wall front (X)
 hs2 = hi0+rs1+1, // Altitude (Y)
 phi = 10 // Incline
 
@@ -781,7 +780,7 @@ function wall_strength( ) {
 
 function chassis( ) {
  const
-  boundary = r7+hs1+wall_strength( )
+  boundary = switchframe.x+switchframe.length+wall_strength( )
 
  const retainer_circle = circle( rr2+wall_strength( ) ).translate( retainer_center( ) )
 
@@ -808,7 +807,7 @@ function left_edge_angle( ) {
 }
 
 function right_edge_angle( ) {
- const boundary = r7+hs1+wall_strength( )
+ const boundary = switchframe.x+switchframe.length+wall_strength( )
  
  const
   delta_x = ( boundary-rf-retainer_center( )[ 0 ] ),
@@ -850,6 +849,7 @@ function chassis_total( ) {
  const speakers = cylinder( wall_strength( )+2*eps,rc1 )
   .translate( [ 0,0,-eps ] )
   .rotate( [ 90,0,0 ] )
+  .scale( [ 1,1,0.5 ] )
   .translate( [ speakers_dist,-rr2+eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
@@ -891,12 +891,12 @@ function pswitch( ) {
   .translate( [ 0,0,-(3.5+3) ] )
   .rotate( [ 0,90,0 ] )
   .rotate( [ 0,-phi,0 ] )
-  .translate( [ r7,0,hs2 ] )
+  .translate( [ switchframe.x,0,hs2 ] )
 }
 
 function cable_slot( ) {
  return cube( [ 2*rc0+eps,button_actor_width( ),ho4 ] )
-  .translate( [ r7+hs1-2*rc0,-button_actor_width( )-wall_strength( )-eps,ho2-2*rc0 ] )
+  .translate( [ switchframe.x+switchframe.length-2*rc0,-button_actor_width( )-wall_strength( )-eps,ho2-2*rc0 ] )
 }
 
 function cable_complement_mask( ) {
@@ -936,7 +936,7 @@ function top_cover_cs( ) {
 function top_cover_mask( ) {
   return top_cover_cs( ).subtract(
    square( [ 4*wall_strength( ),2*wall_strength( ) ] )
-    .translate( [ ( r5+r7)/2+2*wall_strength( ),button_actor_width( )+0*wall_strength( ) ] )
+    .translate( [ ( r5+switchframe.x+switchframe.length)/2-2*wall_strength( ),button_actor_width( ) ] )
   )
   .extrude( ho4 )
   .translate( [ 0,0,ho2 ] )
@@ -947,9 +947,9 @@ function cable_cavity( ) {
  const rail_height = mediator.altitude + mediator.height - hi0
  
  const rail = cube( [ 2*edge_margin+eps,holder_strength+eps,rail_height+eps ] )
-  .translate( [ r7+hs1-2*edge_margin,rs1+edge_margin/2,hi0-eps ] )
+  .translate( [ switchframe.x+switchframe.length-2*edge_margin,rs1+edge_margin/2,hi0-eps ] )
  
- const action_incision_neg = cube( [ r7+hs1,2*button_actor_width( ),ho4+2*eps ] ).translate( [ 0,-button_actor_width( ),-eps ] )
+ const action_incision_neg = cube( [ switchframe.x+switchframe.length,2*button_actor_width( ),ho4+2*eps ] ).translate( [ 0,-button_actor_width( ),-eps ] )
 
  return cavity = top_neg_cs.intersect( chassis( ) )
   .subtract( circle( r5 ) )
@@ -957,7 +957,7 @@ function cable_cavity( ) {
   .extrude( ho4+2*eps ).trimByPlane( [ 0,-1,0] )
   .translate( [ 0,0,-eps ] )
   .subtract(
-   cube( [ 2*hs1,wall_strength( ),ho4+2*eps ] )
+   cube( [ 2*switchframe.length,wall_strength( ),ho4+2*eps ] )
     .translate( [ r5,-button_actor_width( )-wall_strength( ),-eps ] )
     .subtract( cable_slot( ) )
   )
@@ -985,7 +985,8 @@ function main_retainer_neg( ) {
 }
 
 function top_cover( ) {
-  
+ const holder_top = switchframe.y+cos(phi)*switchframe.space+hi0
+ 
  return chassis_total( ).intersect(
   top_cover_mask( )
   .add( cable_complement_mask( ).subtract( cable_cavity( ) ) )
@@ -995,11 +996,19 @@ function top_cover( ) {
     .translate( retainer_center( ).concat( [ho4/2] ) )
   )
   .subtract( main_retainer_neg( ).translate( retainer_center( ).concat( [ ho4/2 ] ) ) )
+  .add(
+   cube( [ switchframe.length,2*button_actor_width(),ho2+eps-holder_top ] )
+   .translate( [ -switchframe.wall/cos(phi),0,0 ] )
+   .rotate( [ 0,90-(printing_angle-phi),0 ] )
+   .trimByPlane( [ 0,0,1 ],0 )
+   .rotate( [ 0,printing_angle-phi-90,0 ] )
+   .translate( [ switchframe.x-switchframe.space*sin(phi),-button_actor_width( ),holder_top ] )
+  )
 }
 
 function main_retainer( ) {
  const ceil = ho4-4
- const dia = 2
+ const dia = 2.6
  
  const h = ho4/2+2*eps
  const slope = cylinder( h,(rr1+rr0-h/tan(printing_angle))/2,(rr1+rr0+h/tan(printing_angle))/2 ).translate( [ 0,0,-eps ] )
@@ -1020,13 +1029,13 @@ function pswitch_holder( ) {
  const railplane = cube( [ 2*(s.length+eps),2*(button_actor_width( )+eps ),2*( mediator.height+mediator.altitude ) ],true )
  
  return cube( [ s.wall+eps,2*(button_actor_width( )+eps),ho4 ] )
-  .translate( [ -s.wall/2-eps,-button_actor_width( )-eps,-ho4/2 ] )
+  .translate( [ -eps,-button_actor_width( )-eps,-ho4/2 ] )
   .subtract(
    cylinder( s.length,s.radius )
    .rotate( [ 0,90,0 ] )
-   .translate( [ -s.wall,0,0 ] )
+   .translate( [ -eps,0,0 ] )
   )
-  .translate( [ s.wall/2,0,-s.space ] )
+  .translate( [ -s.wall,0,-s.space ] )
   .rotate( [ 0,-phi,0 ] )
   .trimByPlane( [ 0,0,-1 ] )
   .add(
@@ -1043,13 +1052,13 @@ function pswitch_holder( ) {
    .subtract( railplane )
    .translate( [ 0,0,-s.y-hi0 ] )
    .rotate( [ 0,phi,0 ] ).translate( [ 0,0,-s.space ] ).rotate( [ 0,-phi,0 ] )
+   .rotate( [ 0,90-(printing_angle-phi),0 ] )
+   .trimByPlane( [ 0,0,-1 ],0 )
+   .rotate( [ 0,printing_angle-phi-90,0 ] )
   )
   .rotate( [ 0,phi,0 ] )
-  .trimByPlane( [ 1,0,0 ],0 )
-  .rotate( [ 0,90-printing_angle,0 ] )
-  .trimByPlane( [ 0,0,-1 ],0 )
-  .rotate( [ 0,printing_angle-90,0 ] )
-  .translate( [ -s.wall,0,s.space ] )
+  .trimByPlane( [ 1,0,0 ],-s.wall )
+  .translate( [ 0,0,s.space ] )
   .rotate( [ 0,-phi,0 ] )
   .trimByPlane( [ 0,0,1 ],-s.y )
   .trimByPlane( [ 0,0,-1 ],-ho2+hi0+s.y )
@@ -1059,7 +1068,7 @@ function pswitch_holder( ) {
   .translate( [ 0,0,s.y+hi0 ] )
   .subtract( railplane.subtract( cube( [ 2*s.wall,2*s.space,ho4 ],true ) ) )
   .translate( [ s.x,0,0 ] )
-
+  .subtract( cable_slot( ) )
 }
 
 function base_lock_mask( ) {
@@ -1140,13 +1149,35 @@ function bottom_cover( ) {
   .subtract( shield_neg_beta )
   .subtract( mask )
   .subtract(
-   cube( [ r7+hs1-2*edge_margin,2*button_actor_width( ),hi1 ] )
+   cube( [ switchframe.x+switchframe.length-2*edge_margin,2*button_actor_width( ),hi1 ] )
    .translate( [ 0,-button_actor_width( ),mediator.altitude ] )
    .subtract(
-    cube( [ hs1+hs3+eps,2*rs1+edge_margin,ho4 ] )
-    .translate( [ r7-hs3,-rs1-edge_margin/2,0 ] )
+    cube( [ switchframe.length+hs3+eps,2*rs1+edge_margin,ho4 ] )
+    .translate( [ switchframe.x-hs3,-rs1-edge_margin/2,0 ] )
    )
   ) 
+}
+
+function medi( ) {
+ const top = ho0-hi0-mediator.margin
+ return cylinder( top+hi0-mediator.altitude-2*mediator.margin,r3 )
+  .translate( [ r3+r4,0,hi0-mediator.altitude+mediator.margin ] )
+  .intersect(
+   cube( [ switchframe.x+switchframe.length-2*edge_margin-mediator.range,2*(button_actor_width()-mediator.margin),ho4 ] )
+   .translate( [ 0,-button_actor_width()+mediator.margin,0 ] )
+  )
+  .subtract(
+   cube( [ switchframe.x,2*(switchframe.space+mediator.margin),ho4 ] )
+   .translate( [ r4+mediator.buffer,-switchframe.space-mediator.margin,0 ] )
+  )
+  .subtract(
+   cube( [ switchframe.x,2*i1,ho4 ] )
+   .translate( [ r4+mediator.buffer,-i1,mediator.altitude+mediator.height-mediator.margin ] )
+  )
+  .intersect(
+   cylinder( switchframe.x,r3 ).rotate( [ 0,90,0 ] ).translate( [ r4-eps,0,top+hi0-r3 ] )
+  )
+   
 }
 
 const stators = [
@@ -1159,6 +1190,7 @@ const stators = [
  ,base_disk( )
  ,retainer( true )
  ,retainer( true ).rotate( [ 0,0,180 ] )
+ ,medi()
 ]
 
 const push_angle = 0*alpha
@@ -1179,19 +1211,12 @@ const rotors = [
  ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
 ]
 
-export default  [
- bottom_cover()
- ,c(retainer(false))
- ,c(retainer( true ).rotate( [ 0,0,180 ] ))
- ,c(base_disk())
-
-]
-/*export default (
+export default (
  rotors.map (
   (o) => o.rotate( [ 0,0,90 ] )
  )
   .concat ( stators )
   .map (
-   (o) => c( o.trimByPlane( [ 0,1,0 ],0 ) )
+   (o) => c( o.trimByPlane( [ 0,1,0 ],-100 ) )
   )
 )//*/
