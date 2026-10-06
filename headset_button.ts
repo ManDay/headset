@@ -1,12 +1,5 @@
 // ManifoldCAD (https://manifoldcad.org/)
 
-// TODO:
-// Vertical pin on turntable
-// Increase slider wall on inside
-// Extend bottom lever beyond joint Y
-// Subtract rail from switch-holder
-// Add pin to wall to stabilize switch-holder
-
 // Generic parameters
 const printing_angle = 50
 const edge_margin = 1
@@ -126,18 +119,16 @@ const switchframe = {
  wall: 1.5
 }
 
-// Pushswitch parameters (anchor at wall meet center)
-const
-rs0 = 2, // Meet radius
-rs1 = 3.25, // Maximal radius
-hs3 = 1.5, // Retainer wall
-hs2 = hi0+rs1+1, // Altitude (Y)
-phi = 10 // Incline
+const mountpoint = {
+ length: 30,
+ outer: { width: 4,length: 4},
+ inner: { width: 6,length: 3}
+}
 
 // Cable parameters
 const
-rc0 = 1.5, // Mic cable radius
-rc1 = 1.5, // Speaker cable radius
+rc0 = 1.7, // Mic cable radius
+rc1 = 1.8, // Speaker cable radius
 rc2 = 3 // Inlet cable radius
 
 // Chassis geometry
@@ -153,7 +144,7 @@ hc = (ho2+hi0)/2 // Cable holes altitude
 // Cable hole positions
 const
  inlet_dist = 1.8*rr2,
- speakers_dist = 2.8*rr2,
+ speakers_dist = 2.5*rr2,
  mic_dist = 1.2*rr2
 
 import {Manifold, CrossSection, getCircularSegments,only,setMaterial} from 'manifold-3d/manifoldCAD';
@@ -739,30 +730,6 @@ function button( slant=0 ) {
   .translate( [ 0,-r4,ho3 ] )
 }
 
-function spring( ) {
- const incline = 4
- const thickness = 0.2
- const radius = rs+2*thickness
- const height = ho3-hb-hi0-2*thickness
- 
- const length = height/sin(incline)
- const rotations = length/(2*PI*radius)
- const segments = Math.ceil( rotations*getCircularSegments( radius ) )
- 
- function springwarp( v ) {
-  const k = v[2]/length
-  const phi = k*rotations*360
-  const r = radius+v[0]
-  const z = k*height-v[1]/cos(incline)
-  
-  v[0] = cos(phi)*r
-  v[1] = sin(phi)*r
-  v[2] = z
- }
- 
- return circle( thickness ).extrude( length,segments ).warp( springwarp ).translate( [ 0,0,hi0 ] )
-}
-
 function rectangle_sector( a,r,w ) {
  const abscissa = w/sin(a)
  
@@ -788,8 +755,8 @@ function chassis( ) {
   .add( 
    retainer_circle
    .add( sector( 45,r6 ).subtract( rectangle_sector( 45,r6,i1 ) ) )
-   .add( circle( rf ).translate( [ boundary-rf,i1] ) )
-   .add( circle( rf ).translate( [ boundary-rf,-i1 ] ) )
+   .add( square( rf ).translate( [ boundary-rf,i1] ) )
+   .add( square( rf ).translate( [ boundary-rf,-i1 ] ) )
    .hull( )
   )
 }
@@ -846,10 +813,9 @@ function chassis_total( ) {
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
   
- const speakers = cylinder( wall_strength( )+2*eps,rc1 )
-  .translate( [ 0,0,-eps ] )
-  .rotate( [ 90,0,0 ] )
-  .scale( [ 1,1,0.5 ] )
+ const speakers = cube( [ rc1,wall_strength( )+2*eps,2*rc1 ],true )
+  .translate( [ 0,-wall_strength()/2,0 ] )
+//  .rotate( [ 90,0,0 ] )
   .translate( [ speakers_dist,-rr2+eps,hc ] )
   .rotate( [ 0,0,right_edge_angle( ) ] )
   .translate( retainer_center( ).concat( [ 0 ] ) )
@@ -890,8 +856,8 @@ function pswitch( ) {
   .add( cube( [ 2.54,2,3+eps ],true ).translate( [ 0,0,14.5+1.5-eps ] ) )
   .translate( [ 0,0,-(3.5+3) ] )
   .rotate( [ 0,90,0 ] )
-  .rotate( [ 0,-phi,0 ] )
-  .translate( [ switchframe.x,0,hs2 ] )
+  .rotate( [ 0,-switchframe.incline,0 ] )
+  .translate( [ switchframe.x,0,switchframe.y ] )
 }
 
 function cable_slot( ) {
@@ -943,11 +909,11 @@ function top_cover_mask( ) {
 }
 
 function cable_cavity( ) {
- const holder_strength = button_actor_width( ) - rs1 - edge_margin/2
+ const holder_strength = button_actor_width( ) - switchframe.space
  const rail_height = mediator.altitude + mediator.height - hi0
  
  const rail = cube( [ 2*edge_margin+eps,holder_strength+eps,rail_height+eps ] )
-  .translate( [ switchframe.x+switchframe.length-2*edge_margin,rs1+edge_margin/2,hi0-eps ] )
+  .translate( [ switchframe.x+switchframe.length-2*edge_margin,switchframe.space,hi0-eps ] )
  
  const action_incision_neg = cube( [ switchframe.x+switchframe.length,2*button_actor_width( ),ho4+2*eps ] ).translate( [ 0,-button_actor_width( ),-eps ] )
 
@@ -985,7 +951,7 @@ function main_retainer_neg( ) {
 }
 
 function top_cover( ) {
- const holder_top = switchframe.y+cos(phi)*switchframe.space+hi0
+ const holder_top = switchframe.y+cos(switchframe.incline)*switchframe.space+hi0
  
  return chassis_total( ).intersect(
   top_cover_mask( )
@@ -998,13 +964,30 @@ function top_cover( ) {
   .subtract( main_retainer_neg( ).translate( retainer_center( ).concat( [ ho4/2 ] ) ) )
   .add(
    cube( [ switchframe.length,2*button_actor_width(),ho2+eps-holder_top ] )
-   .translate( [ -switchframe.wall/cos(phi),0,0 ] )
-   .rotate( [ 0,90-(printing_angle-phi),0 ] )
+   .translate( [ -switchframe.wall/cos(switchframe.incline),0,0 ] )
+   .rotate( [ 0,90-(printing_angle-switchframe.incline),0 ] )
    .trimByPlane( [ 0,0,1 ],0 )
-   .rotate( [ 0,printing_angle-phi-90,0 ] )
-   .translate( [ switchframe.x-switchframe.space*sin(phi),-button_actor_width( ),holder_top ] )
+   .rotate( [ 0,printing_angle-switchframe.incline-90,0 ] )
+   .translate( [ switchframe.x-switchframe.space*sin(switchframe.incline),-button_actor_width( ),holder_top ] )
   )
+  .add( mount( ) )
 }
+
+function mount( ) {
+ const b = switchframe.x+switchframe.length+wall_strength( )+rf
+ const half = square( [ r6,mountpoint.outer.width ] )
+  .translate( [ -r6+b+mountpoint.outer.length,ho4-mountpoint.outer.width ] )
+  .add(
+   square( [ mountpoint.outer.width,(ho4 - mountpoint.inner.width)/2 ] )
+   .translate( [ -mountpoint.outer.width+b+mountpoint.outer.length,(ho4+mountpoint.inner.width)/2 ] )
+  )
+ 
+ return half.extrude( mountpoint.length )
+  .rotate( [ 90,0,0 ] )
+  .translate( [ 0,i1+rf,0 ] )
+  .subtract( chassis( ).offset( -eps ).extrude( ho4+eps ) )
+}  
+ 
 
 function main_retainer( ) {
  const ceil = ho4-4
@@ -1036,7 +1019,7 @@ function pswitch_holder( ) {
    .translate( [ -eps,0,0 ] )
   )
   .translate( [ -s.wall,0,-s.space ] )
-  .rotate( [ 0,-phi,0 ] )
+  .rotate( [ 0,-switchframe.incline,0 ] )
   .trimByPlane( [ 0,0,-1 ] )
   .add(
    cube( [ 2*(s.length+eps),2*(button_actor_width( )+eps),ho4 ],true )
@@ -1045,21 +1028,21 @@ function pswitch_holder( ) {
     .translate( [ eps,0,0 ] )
    )
    .translate( [ s.length,0,0 ] )
-   .rotate( [ 0,-phi,0 ] )
+   .rotate( [ 0,-switchframe.incline,0 ] )
    
-   .rotate( [ 0,phi,0 ] ).translate( [ 0,0,s.space ] ).rotate( [ 0,-phi,0 ] )
+   .rotate( [ 0,switchframe.incline,0 ] ).translate( [ 0,0,s.space ] ).rotate( [ 0,-switchframe.incline,0 ] )
    .translate( [ 0,0,s.y+hi0 ] )
    .subtract( railplane )
    .translate( [ 0,0,-s.y-hi0 ] )
-   .rotate( [ 0,phi,0 ] ).translate( [ 0,0,-s.space ] ).rotate( [ 0,-phi,0 ] )
-   .rotate( [ 0,90-(printing_angle-phi),0 ] )
+   .rotate( [ 0,switchframe.incline,0 ] ).translate( [ 0,0,-s.space ] ).rotate( [ 0,-switchframe.incline,0 ] )
+   .rotate( [ 0,90-(printing_angle-switchframe.incline),0 ] )
    .trimByPlane( [ 0,0,-1 ],0 )
-   .rotate( [ 0,printing_angle-phi-90,0 ] )
+   .rotate( [ 0,printing_angle-switchframe.incline-90,0 ] )
   )
-  .rotate( [ 0,phi,0 ] )
+  .rotate( [ 0,switchframe.incline,0 ] )
   .trimByPlane( [ 1,0,0 ],-s.wall )
   .translate( [ 0,0,s.space ] )
-  .rotate( [ 0,-phi,0 ] )
+  .rotate( [ 0,-switchframe.incline,0 ] )
   .trimByPlane( [ 0,0,1 ],-s.y )
   .trimByPlane( [ 0,0,-1 ],-ho2+hi0+s.y )
   .trimByPlane( [ -1,0,0 ],-s.length )
@@ -1152,10 +1135,13 @@ function bottom_cover( ) {
    cube( [ switchframe.x+switchframe.length-2*edge_margin,2*button_actor_width( ),hi1 ] )
    .translate( [ 0,-button_actor_width( ),mediator.altitude ] )
    .subtract(
-    cube( [ switchframe.length+hs3+eps,2*rs1+edge_margin,ho4 ] )
-    .translate( [ switchframe.x-hs3,-rs1-edge_margin/2,0 ] )
+    cube( [ switchframe.length+switchframe.wall+eps,2*switchframe.space,ho4 ] )
+    .translate( [ switchframe.x-switchframe.wall,-switchframe.space,0 ] )
    )
-  ) 
+  )
+  .add(
+   mount( ).mirror( [ 0,0,1 ] ).translate( [ 0,0,ho4 ] )
+  )
 }
 
 function medi( ) {
@@ -1188,7 +1174,7 @@ const stators = [
  ,top_cover( )
  ,pswitch_holder( )
  ,base_disk( )
- ,retainer( true )
+ ,retainer( false )
  ,retainer( true ).rotate( [ 0,0,180 ] )
  ,medi()
 ]
@@ -1210,6 +1196,8 @@ const rotors = [
  ,bottom_lever( push_angle,bump )
  ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
 ]
+
+//export default mount( )
 
 export default (
  rotors.map (
