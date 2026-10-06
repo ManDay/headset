@@ -857,7 +857,7 @@ function pswitch( ) {
   .translate( [ 0,0,-(3.5+3) ] )
   .rotate( [ 0,90,0 ] )
   .rotate( [ 0,-switchframe.incline,0 ] )
-  .translate( [ switchframe.x,0,switchframe.y ] )
+  .translate( [ switchframe.x,0,hi0+switchframe.y ] )
 }
 
 function cable_slot( ) {
