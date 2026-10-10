@@ -42,9 +42,7 @@ gamma = 70 // Chassis main retainer angle
 // Heights, Turntable mount
 const
 hi0 = 4, // Base plate
-hi1 = 6, // Retainer
-hi2 = 4, // Guide cutout floor
-hi3 = 6 // Guide height
+hi1 = 6 // Retainer
 
 // Heights, Turntable structure
 const
@@ -54,10 +52,6 @@ ho3 = 20, // Swivel (Lever Axis Y)
 ho4 = 21 // Button top
 
 // Spring retainer
-const
-rs = 6,
-hs = 1,
-is = 2.5
 const pin = {
  radius: 1,
  height: 4,
@@ -85,8 +79,8 @@ const levers = {
   leg: 2.1,
   pin: {
    position: {
-    angle: 65,
-    separation: 0.5
+    angle: 75,
+    separation: 0
    },
    radius: 1,
    margin: edge_margin
@@ -1218,7 +1212,6 @@ export default (
  )
   .concat ( stators )
   .map (
-   (o) => o.trimByPlane( [ 0,1,0 ],-100 )
+   (o) => o.trimByPlane( [ 0,1,0 ],0 )
   )
-)//*/
-
+)
