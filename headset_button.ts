@@ -61,7 +61,7 @@ is = 2.5
 const pin = {
  radius: 1,
  height: 4,
- distance: 3,
+ distance: 6,
  spacing: 4
 }
 
@@ -85,8 +85,8 @@ const levers = {
   leg: 2.1,
   pin: {
    position: {
-    angle: 42,
-    separation: 0
+    angle: 65,
+    separation: 0.5
    },
    radius: 1,
    margin: edge_margin
@@ -120,15 +120,15 @@ const switchframe = {
 }
 
 const mountpoint = {
- length: 30,
+ length: 25,
  outer: { width: 4,length: 4},
  inner: { width: 6,length: 3}
 }
 
 // Cable parameters
 const
-rc0 = 1.7, // Mic cable radius
-rc1 = 1.8, // Speaker cable radius
+rc0 = 2, // Mic cable radius
+rc1 = 1.7, // Speaker cable radius
 rc2 = 3 // Inlet cable radius
 
 // Chassis geometry
@@ -155,9 +155,13 @@ const eps = 0.5
 
 setCircularSegments( resolution )
 
-function c( obj ) {
+function c( obj,rgb,a=1 ) {
+ return setMaterial( obj,{ baseColorFactor: rgb,alpha: a } )
+}
+
+function rc( obj,rgb,a ) {
  const r = Math.random
- return setMaterial( obj,{ baseColorFactor: [ r( ),r( ),r( ) ] } )
+ return c( obj,[ r( ),r( ),r( ) ],1.0 )
 }
 
 function sin( angle ) {
@@ -230,6 +234,10 @@ function turntable_cutout( ) {
   .add( cube( [ i1+eps,ylimit+eps,ho4 ] ).translate( [ -eps,-ylimit-eps,hi1+pin.height ] ) )
   .trimByPlane( [ 1,0,0 ],-eps )
   .add( cube( [ pin.spacing,r5,pin.height+eps ] ).translate( [ 0,-r5,hi1 ] ) )
+  .add(
+   cylinder( hi1+eps,r0+pin.distance-pin.radius-edge_margin )
+    .intersect( cube( [ pin.spacing,r5,ho4 ] ).translate( [ 0,-r5,0 ] ) )
+  )
   
  return half.add( half.mirror( [ 1,0,0 ] ) )
 
@@ -259,7 +267,7 @@ function turntable_pin( ) {
   )
   .subtract(
    cylinder( ho4,pin.radius )
-   .translate( [ 0,-r0-pin.radius-pin.distance,0 ] )
+   .translate( [ 0,-r0-pin.distance,0 ] )
   )
 }
 
@@ -288,8 +296,8 @@ function turntable( ) {
   .add( ret_b.mirror( [ 1,0,0 ] ) )
   .subtract( slider_neg_half.add( slider_neg_half.mirror( [ 1,0,0 ] ) ) )
   .add(
-   cylinder( pin.height+eps+edge_margin,pin.radius )
-   .translate( [ 0,-r0-pin.radius-pin.distance,hi1-eps ] )
+   cylinder( pin.height+eps+2*edge_margin,pin.radius )
+   .translate( [ 0,-r0-pin.distance,hi1-eps ] )
   )
   .trimByPlane( [0,0,1],hi0_sg )
   .subtract(
@@ -663,7 +671,7 @@ function button( slant=0 ) {
 
  const w = r4-r3
  const h = ho3-hi1-edge_margin*2
- const protrusion = (w+h*sin(beta))/cos(beta)-w
+ const protrusion = (w+h*sin(beta))/cos(beta)-w-sg
  const height = tan(printing_angle)*(protrusion+eps)
  const theta = asin( (button_actor_width( )-sg)/r3 )
  const theta_min = Math.min( theta,45/2 )
@@ -1166,38 +1174,43 @@ function medi( ) {
    
 }
 
+const black = [0.1,0.1,0.1]
+const gray = [0.4,0.4,0.4]
+const red = [0.9,0.2,0.2]
+const yellow = [0.9,0.9,0.2]
+const blue = [0.2,0.2,0.9]
+const transparent = 1.0
+
 const stators = [
- pswitch( )
- ,wall( )
- ,main_retainer( )
- ,bottom_cover( )
- ,top_cover( )
- ,pswitch_holder( )
- ,base_disk( )
- ,retainer( false )
- ,retainer( true ).rotate( [ 0,0,180 ] )
- ,medi()
+ c( pswitch( ),[ 0.9,0.9,0.9 ] )
+ ,c( wall( ),black )
+ ,c( main_retainer( ),black )
+ ,c( bottom_cover( ),black )
+ ,c( top_cover( ),black,transparent )
+ ,c( pswitch_holder( ),blue )
+ ,c( base_disk( ),gray )
+ ,c( retainer( false ),blue )
+ ,c( retainer( true ).rotate( [ 0,0,180 ] ),blue )
+ ,c( medi(),yellow )
 ]
 
-const push_angle = 0*alpha
+const push_angle = 0.0*alpha
 const bump = 0
 
 const rotors = [
- ,button( push_angle )
- ,slider( )
- ,top_lever( true,push_angle,bump )
- ,top_lever( false,push_angle,bump ).mirror( [ 1,0,0 ] )
- ,turntable( )
- ,turntable_pin( )
- ,cap_bottom( )
- ,cap_top( )
- ,cap_bottom( ).mirror( [ 1,0,0 ] )
- ,cap_top( ).mirror( [ 1,0,0 ] )
- ,bottom_lever( push_angle,bump )
- ,bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] )
+ ,c( button( push_angle ),red )
+ ,c( slider( ),blue )
+ ,c( top_lever( true,push_angle,bump ),yellow )
+ ,c( top_lever( false,push_angle,bump ).mirror( [ 1,0,0 ] ),yellow )
+ ,c( turntable( ),black,transparent )
+ ,c( turntable_pin( ),black,transparent )
+ ,c( cap_bottom( ),black,transparent )
+ ,c( cap_top( ),black,transparent )
+ ,c( cap_bottom( ).mirror( [ 1,0,0 ] ),black,transparent )
+ ,c( cap_top( ).mirror( [ 1,0,0 ] ),black,transparent )
+ ,c( bottom_lever( push_angle,bump ),yellow )
+ ,c( bottom_lever( push_angle,bump ).mirror( [ 1,0,0 ] ),yellow )
 ]
-
-//export default mount( )
 
 export default (
  rotors.map (
@@ -1205,6 +1218,7 @@ export default (
  )
   .concat ( stators )
   .map (
-   (o) => c( o.trimByPlane( [ 0,1,0 ],-100 ) )
+   (o) => o.trimByPlane( [ 0,1,0 ],-100 )
   )
 )//*/
+
