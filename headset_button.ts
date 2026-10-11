@@ -4,7 +4,7 @@
 const printing_angle = 50
 const edge_margin = 1
 const sg = 0.1 // Slip-Gap
-const resolution = 64
+const resolution = 128
 
 // Radii
 const
@@ -38,6 +38,11 @@ gamma = 70 // Chassis main retainer angle
 /* Note: beta_max = arctan( delta_r/delta_h ) where
 * delta_r = sqrt( r5^2 - i1^2 ) - r4
 * delta_h = ceiling thicknes */
+
+// Presentation
+const push_angle = 0.0*alpha
+const bump = 0
+const transparent = 0.3
 
 // Heights, Turntable mount
 const
@@ -73,13 +78,13 @@ const levers = {
  radius: 1.5,
  margin: edge_margin,
  top: {
-  height: 7.1,
+  height: 6.4,
   width: 3,
   radius: 1.5,
-  leg: 2.1,
+  leg: 2.5,
   pin: {
    position: {
-    angle: 75,
+    angle: 100,
     separation: 0
    },
    radius: 1,
@@ -87,10 +92,10 @@ const levers = {
   }
  },
  bottom: {
-  height: 7,
+  height: 6.5,
   width: 3,
   radius: 1.5,
-  reenforce: 4,
+  reenforce: 5,
   leg: 2
  }
 }
@@ -253,7 +258,7 @@ function turntable_base( ) {
 function turntable_pin( ) {
  return turntable_base( ).intersect( turntable_cutout( ) )
   .trimByPlane( [ 0,0,1 ],hi1+pin.height )
-  .trimByPlane( [ 0,-1,0 ],r0 )
+  .trimByPlane( [ 0,-1,0 ],r0+sg )
   .trimByPlane( [ 0,0,-1 ],-ho2 )
   .subtract(
    button_space( ).intersect( cube( [ 2*i1,2*r5,2*ho4 ],true ) )
@@ -614,8 +619,8 @@ function base_disk( ) {
   .subtract( notch_neg ).subtract( notch_neg.rotate( [ 0,0,180 ] ) )
   .trimByPlane( [ 0,0,1 ],0 )
   .subtract( cylinder( ho4,r1+sg ).translate( [ 0,0,hi0-ib ] ) )
-  .subtract( slider_base( r1+sg,i3+sg ) )
-  .subtract( slider_base( r1+sg,i3+sg ).rotate( [ 0,0,90 ] ) )
+  .subtract( slider_base( r1+sg,i3 ) )
+  .subtract( slider_base( r1+sg,i3 ).rotate( [ 0,0,90 ] ) )
 }
 
 function button_actor_width( ) {
@@ -1173,7 +1178,6 @@ const gray = [0.4,0.4,0.4]
 const red = [0.9,0.2,0.2]
 const yellow = [0.9,0.9,0.2]
 const blue = [0.2,0.2,0.9]
-const transparent = 1.0
 
 const stators = [
  c( pswitch( ),[ 0.9,0.9,0.9 ] )
@@ -1188,12 +1192,9 @@ const stators = [
  ,c( medi(),yellow )
 ]
 
-const push_angle = 0.0*alpha
-const bump = 0
-
 const rotors = [
  ,c( button( push_angle ),red )
- ,c( slider( ),blue )
+ ,c( slider( ).translate( [ 0,0,bump ] ),blue )
  ,c( top_lever( true,push_angle,bump ),yellow )
  ,c( top_lever( false,push_angle,bump ).mirror( [ 1,0,0 ] ),yellow )
  ,c( turntable( ),black,transparent )
@@ -1212,6 +1213,6 @@ export default (
  )
   .concat ( stators )
   .map (
-   (o) => o.trimByPlane( [ 0,1,0 ],0 )
+   (o) => o.trimByPlane( [ 0,-1,0 ],0 )
   )
 )
