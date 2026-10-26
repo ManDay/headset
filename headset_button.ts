@@ -42,7 +42,7 @@ gamma = 70 // Chassis main retainer angle
 // Presentation
 const push_angle = 0.0*alpha
 const bump = 0
-const transparent = 0.8
+const transparent = 1.0
 
 // Heights, Turntable mount
 const
@@ -128,9 +128,10 @@ const mountpoint = {
  wall: 4,
  base: 3,
  grip: 2,
- plate: 50,
+ plate: 55,
  strength: 5,
- altitude: 6
+ altitude: 6,
+ chamfer: 6
 }
 
 // Cable parameters
@@ -1205,11 +1206,29 @@ function mount( ) {
    .hull( )
   )
   .translate( [ cos(pin_angle)*(r2+r3)/2,sin(pin_angle)*(r2+r3)/2 ] )
+  
+ const plate_mask = circle( mountpoint.chamfer )
+  .translate( [
+   -(b+mountpoint.wall)/2+mountpoint.chamfer
+   ,mountpoint.plate/2-mountpoint.chamfer
+  ] )
+  .add(
+   circle( mountpoint.chamfer )
+   .translate( [
+    (b+mountpoint.wall)/2-mountpoint.chamfer
+    ,mountpoint.plate/2-mountpoint.chamfer
+   ] )
+  )
+  .add(
+   square( [ b+mountpoint.wall,2*eps ],true )
+   .translate( [ 0,eps-mountpoint.plate/2 ] )
+  ).hull( )
  
  const plate_raw = sphere( 105 ).subtract( sphere( 105-mountpoint.strength ) )
   .trimByPlane( [ 0,0,1 ],0 )
   .scale( [ 150/105,160/105,1 ] )
-  .intersect( cube( [ b+mountpoint.wall,mountpoint.plate,400 ],true ) )
+  .intersect( plate_mask.extrude( 400 )
+  )
  
  const plate_bb = plate_raw.boundingBox( ).min
  const plate = plate_raw
@@ -1223,7 +1242,7 @@ function mount( ) {
    .translate( [ 0,-i1,0 ] )
   )
   .subtract(
-   cylinder( ho4+mountpoint.base+2*eps,r5+sg )
+   cylinder( ho4+mountpoint.base+2*eps,r5 )
    .add( sector( 45,r6 ).extrude( ho4+mountpoint.base+2*eps ) )
    .add( cylinder( ho1+mountpoint.base+eps,r6 ) )
    .translate( [ 0,0,-eps ] )
