@@ -1198,14 +1198,15 @@ function mount( ) {
  const hole = circle( pin_radius )
  const space = square( pin_radius*2,true )
  const guide = hole
-  .add( space.translate( [ -mountpoint.wall,0 ] ) )
+  .add( hole.translate( [ -mountpoint.wall,0 ] ) )
   .hull( )
   .add(
-   space.translate( [ -mountpoint.wall,0 ] )
-    .add( space.translate( [ -mountpoint.wall,-mountpoint.wall ] ) )
+   hole.translate( [ -mountpoint.wall,0 ] )
+   .add( hole.translate( [ -mountpoint.wall-clip.protrusion+1,-(r6-r5)-1 ] ) )
    .hull( )
   )
   .translate( [ cos(pin_angle)*(r2+r3)/2,sin(pin_angle)*(r2+r3)/2 ] )
+  
   
  const plate_mask = circle( mountpoint.chamfer )
   .translate( [
@@ -1233,10 +1234,10 @@ function mount( ) {
  const plate_bb = plate_raw.boundingBox( ).min
  const plate = plate_raw
   .translate( [ -plate_bb[ 0 ],-plate_bb[ 1 ],-plate_bb[ 2 ] ] )
- 
+  
  return cylinder( ho4+mountpoint.base+eps,r6+mountpoint.grip )
   .trimByPlane( [ 0,1,0 ] )
-  .add( plate.translate( [ 0,clip_y( )-eps,mountpoint.altitude ] ) )
+  .add( plate.translate( [ 0,clip_y( ),mountpoint.altitude ] ) )
   .add(
    cube( [ b+mountpoint.wall,i1+clip_y( )+mountpoint.grip,ho4+mountpoint.base+eps ] )
    .translate( [ 0,-i1,0 ] )
@@ -1244,7 +1245,7 @@ function mount( ) {
   .subtract(
    cylinder( ho4+mountpoint.base+2*eps,r5 )
    .add( sector( 45,r6 ).extrude( ho4+mountpoint.base+2*eps ) )
-   .add( cylinder( ho1+mountpoint.base+eps,r6 ) )
+   .add( cylinder( ho1+mountpoint.base+2*eps,r6 ) )
    .translate( [ 0,0,-eps ] )
   )
   .trimByPlane( [ 1,0,0 ] )
@@ -1295,7 +1296,7 @@ const stators = [
  ,c( retainer( true ),black )
  ,c( retainer( ).rotate( [ 0,0,180 ] ),black )
  ,c( medi(),yellow )
- ,c( mount( ),gray )
+ ,c( mount(),gray )
 ]
 
 const rotors = [
