@@ -983,7 +983,7 @@ function wall( ) {
      .translate( [ b-eps,i1+clip.gap,hi0 ] )
    )
    .add(
-    cube( [ clip.protrusion,clip.edge+eps,h ] )
+    cube( [ clip.protrusion-sg,clip.edge+eps,h ] )
     .translate( [ 0,-edge_margin-eps,0 ] )
     .trimByPlane( [ 1,-1,0 ] )
     .mirror( [ 1,0,0 ] )
@@ -1195,8 +1195,7 @@ function mount( ) {
  const pin_radius = (r3-r2)/2+(hi0-2*edge_margin)/tan(printing_angle)
  const pin_angle = 45/2+360*pin_radius/(PI*(r2+r3))
  
- const hole = circle( pin_radius )
- const space = square( pin_radius*2,true )
+ const hole = circle( pin_radius+sg )
  const guide = hole
   .add( hole.translate( [ -mountpoint.wall,0 ] ) )
   .hull( )
@@ -1243,25 +1242,24 @@ function mount( ) {
    .translate( [ 0,-i1,0 ] )
   )
   .subtract(
-   cylinder( ho4+mountpoint.base+2*eps,r5 )
-   .add( sector( 45,r6 ).extrude( ho4+mountpoint.base+2*eps ) )
-   .add( cylinder( ho1+mountpoint.base+2*eps,r6 ) )
+   cylinder( ho4+mountpoint.base+2*eps,r5+sg )
+   .add( sector( 45,r6+sg ).extrude( ho4+mountpoint.base+2*eps ) )
+   .add( cylinder( ho1+mountpoint.base+2*eps+sg,r6+sg ) )
    .translate( [ 0,0,-eps ] )
   )
   .trimByPlane( [ 1,0,0 ] )
   .subtract(
-   cube( [ b,i1+clip_y()+eps,ho4+mountpoint.base+2*eps ] )
+   cube( [ b,i1+clip_y()+eps+sg,ho4+mountpoint.base+2*eps ] )
    .translate( [ 0,-i1-eps,-eps ] )
   )
   .add(
-   sector( 90,r6 )
-   .add( square( [ b,i1 ] ).translate( [ 0,-i1 ] ) )
-   .add( square( [ b+eps,clip_y( )+i1+eps ] ).translate( [ 0,-i1 ] ) )
+   sector( 90,r6+sg+eps )
+   .add( square( [ b+eps,clip_y( )+i1+sg+eps ] ).translate( [ 0,-i1 ] ) )
    .subtract( guide )
    .subtract(
     square( 2*(i1+eps),true ).subtract( circle( i1 ) ).intersect( square( r6 ).mirror( [ 1,1 ] ) ).translate( [ i1,0,0 ] )
    )
-   .extrude( mountpoint.base+eps )
+   .extrude( mountpoint.base+eps-sg )
   )
   .translate( [ 0,0,-mountpoint.base-eps ] )
   .subtract(
@@ -1269,12 +1267,12 @@ function mount( ) {
    .add( taper( ).mirror( [ 1,0,0 ] ).rotate( [0,0,asin( i1/r5 ) ] ) )
   )
   .subtract(
-   cube( [ 2*b,clip_y( )-i1+clip.edge,h ] )
-   .translate( [ 0,-(clip_y()-i1),hi0 ] )
+   cube( [ 2*b,clip_y( )-i1+clip.edge+2*sg,h+2*sg ] )
+   .translate( [ 0,-(clip_y()-i1)-sg,hi0-sg ] )
   )
   .subtract(
-   cube( [ 2*b,clip_y( )-i1,h ] )
-    .translate( [ 0,i1,hi0 ] )
+   cube( [ 2*b,clip_y( )-i1,h+2*sg ] )
+    .translate( [ 0,i1,hi0-sg ] )
   )
   .trimByPlane( [ 0,0,1 ],-mountpoint.base )
 }
@@ -1320,6 +1318,6 @@ export default (
  )
   .concat ( stators )
   .map (
-   (o) => o.trimByPlane( [ 0,-1,0 ],-100 )
+   (o) => rc(o.trimByPlane( [ 1,0,0 ],1 ))
   )
 )
